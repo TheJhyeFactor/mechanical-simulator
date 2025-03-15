@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mechanical Interaction Simulator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="disclaimer-banner">
+        ⚠️ Educational Simulator Only - Conceptual States & Relationships - Not Real-World Specifications
+    </div>
+
+    <div class="container">
+        <aside class="left-panel">
+            <div class="panel-header">
+                <h2>Components</h2>
+                <p>Drag to workspace</p>
+            </div>
+
+            <div class="component-library">
+                <div class="component-item" draggable="true" data-type="primary-actuator">
+                    <div class="component-preview actuator"></div>
+                    <div class="component-info">
+                        <strong>Primary Actuator</strong>
+                        <small>Rotating element</small>
+                    </div>
+                </div>
+
+                <div class="component-item" draggable="true" data-type="retention-element">
+                    <div class="component-preview retention"></div>
+                    <div class="component-info">
+                        <strong>Retention Element</strong>
+                        <small>Engagement surface</small>
+                    </div>
+                </div>
+
+                <div class="component-item" draggable="true" data-type="stop-surface">
+                    <div class="component-preview stop"></div>
+                    <div class="component-info">
+                        <strong>Stop Surface</strong>
+                        <small>Motion constraint</small>
+                    </div>
+                </div>
+
+                <div class="component-item" draggable="true" data-type="spring-element">
+                    <div class="component-preview spring"></div>
+                    <div class="component-info">
+                        <strong>Spring Element</strong>
+                        <small>Preload force</small>
+                    </div>
+                </div>
+
+                <div class="component-item" draggable="true" data-type="pivot-point">
+                    <div class="component-preview pivot"></div>
+                    <div class="component-info">
+                        <strong>Pivot Point</strong>
+                        <small>Rotation axis</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h3>Quick Actions</h3>
+                <button class="action-btn" id="clear-workspace">Clear Workspace</button>
+                <button class="action-btn" id="reset-states">Reset All States</button>
+                <button class="action-btn" id="example-config">Load Example</button>
+            </div>
+        </aside>
+
+        <main class="workspace">
+            <div class="workspace-header">
+                <h1>Mechanical Interaction Simulator</h1>
+                <div class="workspace-controls">
+                    <button class="control-btn" id="apply-input">Apply Input Force</button>
+                    <button class="control-btn" id="release-input">Release</button>
+                    <button class="control-btn secondary" id="run-analysis">Analyze System</button>
+                </div>
+            </div>
+
+            <canvas id="canvas" width="1200" height="700"></canvas>
+
+            <div class="workspace-footer">
+                <div class="footer-section">
+                    <span class="status-indicator" id="system-status">
+                        <span class="status-dot idle"></span>
+                        System: IDLE
+                    </span>
+                </div>
+                <div class="footer-section">
+                    <span id="component-count">Components: 0</span>
+                </div>
+                <div class="footer-section">
+                    <span id="constraint-status">Constraints: Not Evaluated</span>
+                </div>
+            </div>
+        </main>
+
+        <aside class="right-panel">
+            <div class="panel-header">
+                <h2>System State</h2>
+                <p>Real-time analysis</p>
+            </div>
+
+            <div class="state-display">
+                <div class="state-section">
+                    <h3>Current State</h3>
+                    <div class="state-value" id="current-state">at_rest</div>
+                </div>
+
+                <div class="state-section">
+                    <h3>Engagement Status</h3>
+                    <div id="engagement-list">
+                        <div class="engagement-item">
+                            <span class="engagement-label">No engagements</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="state-section">
+                    <h3>Constraints</h3>
+                    <div id="constraint-list">
+                        <div class="constraint-item neutral">
+                            <span class="constraint-icon">○</span>
+                            <span>No constraints active</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-section stress-analysis">
+                <h3>Stress Analysis</h3>
+                <div id="stress-display">
+                    <div class="stress-item">
+                        <div class="stress-label">Rotation Stress</div>
+                        <div class="stress-bar">
+                            <div class="stress-fill" id="rotation-stress" style="width: 0%"></div>
+                        </div>
+                        <div class="stress-value">0%</div>
+                    </div>
+
+                    <div class="stress-item">
+                        <div class="stress-label">Friction Load</div>
+                        <div class="stress-bar">
+                            <div class="stress-fill" id="friction-stress" style="width: 0%"></div>
+                        </div>
+                        <div class="stress-value">0%</div>
+                    </div>
+
+                    <div class="stress-item">
+                        <div class="stress-label">Mass Distribution</div>
+                        <div class="stress-bar">
+                            <div class="stress-fill" id="mass-stress" style="width: 0%"></div>
+                        </div>
+                        <div class="stress-value">0%</div>
+                    </div>
+
+                    <div class="stress-item">
+                        <div class="stress-label">Contact Pressure</div>
+                        <div class="stress-bar">
+                            <div class="stress-fill" id="contact-stress" style="width: 0%"></div>
+                        </div>
+                        <div class="stress-value">0%</div>
+                    </div>
+                </div>
+
+                <div class="failure-points" id="failure-points">
+                    <h4>Potential Failure Points</h4>
+                    <div class="failure-list">
+                        <em>Run analysis to identify</em>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h3>Information</h3>
+                <div class="info-box">
+                    <p><strong>States:</strong> at_rest, preloaded, engaged, blocked, released</p>
+                    <p><strong>Interaction:</strong> Drag components to position, click to rotate, use controls to test</p>
+                    <p><strong>Analysis:</strong> Shows constraint satisfaction and stress distribution</p>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <footer class="page-footer">
+        <p>
+            Educational Simulation Tool |
+            <a href="https://github.com/TheJhyeFactor/mechanical-simulator" target="_blank">GitHub</a> |
+            Built by @TheJhyeFactor
+        </p>
+    </footer>
+
+    <script src="simulator.js"></script>
+</body>
+</html>
