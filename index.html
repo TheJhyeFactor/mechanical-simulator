@@ -3,126 +3,185 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mechanical Interaction Simulator</title>
+    <title>3D Mechanical System Designer</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
     <div class="disclaimer-banner">
-        ⚠️ Educational Simulator Only - Conceptual States & Relationships - Not Real-World Specifications
+        ⚠️ EDUCATIONAL SIMULATOR ONLY - Conceptual mechanical design tool - NOT construction guidance - Abstract force calculations
     </div>
 
     <div class="container">
         <aside class="left-panel">
             <div class="panel-header">
-                <h2>Components</h2>
-                <p>Drag to workspace</p>
+                <h2>Component Library</h2>
+                <p>Click to add to workspace</p>
             </div>
 
             <div class="component-library">
-                <div class="component-item" draggable="true" data-type="primary-actuator">
-                    <div class="component-preview actuator"></div>
+                <div class="component-item" data-type="hammer">
+                    <div class="component-preview hammer-icon">🔨</div>
                     <div class="component-info">
-                        <strong>Primary Actuator</strong>
-                        <small>Rotating element</small>
+                        <strong>Hammer Assembly</strong>
+                        <small>Rotating striker element</small>
                     </div>
                 </div>
 
-                <div class="component-item" draggable="true" data-type="retention-element">
-                    <div class="component-preview retention"></div>
+                <div class="component-item" data-type="sear">
+                    <div class="component-preview sear-icon">⚙️</div>
                     <div class="component-info">
-                        <strong>Retention Element</strong>
+                        <strong>Sear Component</strong>
                         <small>Engagement surface</small>
                     </div>
                 </div>
 
-                <div class="component-item" draggable="true" data-type="stop-surface">
-                    <div class="component-preview stop"></div>
+                <div class="component-item" data-type="spring">
+                    <div class="component-preview spring-icon">🌀</div>
                     <div class="component-info">
-                        <strong>Stop Surface</strong>
-                        <small>Motion constraint</small>
+                        <strong>Compression Spring</strong>
+                        <small>Force element</small>
                     </div>
                 </div>
 
-                <div class="component-item" draggable="true" data-type="spring-element">
-                    <div class="component-preview spring"></div>
+                <div class="component-item" data-type="trigger">
+                    <div class="component-preview trigger-icon">📐</div>
                     <div class="component-info">
-                        <strong>Spring Element</strong>
-                        <small>Preload force</small>
+                        <strong>Trigger Lever</strong>
+                        <small>Input actuator</small>
                     </div>
                 </div>
 
-                <div class="component-item" draggable="true" data-type="pivot-point">
-                    <div class="component-preview pivot"></div>
+                <div class="component-item" data-type="pin">
+                    <div class="component-preview pin-icon">📍</div>
                     <div class="component-info">
-                        <strong>Pivot Point</strong>
+                        <strong>Pivot Pin</strong>
                         <small>Rotation axis</small>
+                    </div>
+                </div>
+
+                <div class="component-item" data-type="block">
+                    <div class="component-preview block-icon">⬛</div>
+                    <div class="component-info">
+                        <strong>Frame Block</strong>
+                        <small>Mounting surface</small>
                     </div>
                 </div>
             </div>
 
             <div class="panel-section">
+                <h3>Camera Controls</h3>
+                <div class="control-grid">
+                    <button class="action-btn" id="view-front">Front View</button>
+                    <button class="action-btn" id="view-side">Side View</button>
+                    <button class="action-btn" id="view-top">Top View</button>
+                    <button class="action-btn" id="view-iso">Isometric</button>
+                </div>
+            </div>
+
+            <div class="panel-section">
                 <h3>Quick Actions</h3>
-                <button class="action-btn" id="clear-workspace">Clear Workspace</button>
-                <button class="action-btn" id="reset-states">Reset All States</button>
-                <button class="action-btn" id="example-config">Load Example</button>
+                <button class="action-btn" id="clear-workspace">Clear All</button>
+                <button class="action-btn" id="reset-states">Reset System</button>
+                <button class="action-btn" id="load-example">Load Example</button>
             </div>
         </aside>
 
         <main class="workspace">
             <div class="workspace-header">
-                <h1>Mechanical Interaction Simulator</h1>
+                <h1>3D Mechanical System Designer</h1>
                 <div class="workspace-controls">
-                    <button class="control-btn" id="apply-input">Apply Input Force</button>
-                    <button class="control-btn" id="release-input">Release</button>
-                    <button class="control-btn secondary" id="run-analysis">Analyze System</button>
+                    <button class="control-btn" id="cock-hammer">Cock Hammer</button>
+                    <button class="control-btn" id="pull-trigger">Release Sear</button>
+                    <button class="control-btn secondary" id="run-simulation">Run Physics Test</button>
+                    <button class="control-btn secondary" id="show-forces">Show Forces</button>
                 </div>
             </div>
 
-            <canvas id="canvas" width="1200" height="700"></canvas>
+            <div id="viewport"></div>
 
             <div class="workspace-footer">
                 <div class="footer-section">
                     <span class="status-indicator" id="system-status">
                         <span class="status-dot idle"></span>
-                        System: IDLE
+                        <span id="status-text">System Ready</span>
                     </span>
                 </div>
                 <div class="footer-section">
                     <span id="component-count">Components: 0</span>
                 </div>
                 <div class="footer-section">
-                    <span id="constraint-status">Constraints: Not Evaluated</span>
+                    <span id="simulation-mode">Mode: Design</span>
+                </div>
+                <div class="footer-section">
+                    <span id="physics-status">Physics: Paused</span>
                 </div>
             </div>
         </main>
 
         <aside class="right-panel">
             <div class="panel-header">
-                <h2>System State</h2>
-                <p>Real-time analysis</p>
+                <h2>System Analysis</h2>
+                <p>Real-time physics data</p>
             </div>
 
             <div class="state-display">
                 <div class="state-section">
-                    <h3>Current State</h3>
-                    <div class="state-value" id="current-state">at_rest</div>
-                </div>
-
-                <div class="state-section">
-                    <h3>Engagement Status</h3>
-                    <div id="engagement-list">
-                        <div class="engagement-item">
-                            <span class="engagement-label">No engagements</span>
+                    <h3>Selected Component</h3>
+                    <div class="state-value" id="selected-component">None</div>
+                    <div class="component-properties" id="component-props">
+                        <div class="prop-item">
+                            <span>Position:</span>
+                            <span id="prop-pos">-</span>
+                        </div>
+                        <div class="prop-item">
+                            <span>Rotation:</span>
+                            <span id="prop-rot">-</span>
+                        </div>
+                        <div class="prop-item">
+                            <span>Mass:</span>
+                            <span id="prop-mass">-</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="state-section">
-                    <h3>Constraints</h3>
-                    <div id="constraint-list">
-                        <div class="constraint-item neutral">
-                            <span class="constraint-icon">○</span>
-                            <span>No constraints active</span>
+                    <h3>System State</h3>
+                    <div id="system-state-list">
+                        <div class="state-item">
+                            <span class="state-label">Hammer:</span>
+                            <span id="hammer-state" class="state-status">at_rest</span>
+                        </div>
+                        <div class="state-item">
+                            <span class="state-label">Sear:</span>
+                            <span id="sear-state" class="state-status">disengaged</span>
+                        </div>
+                        <div class="state-item">
+                            <span class="state-label">Spring:</span>
+                            <span id="spring-state" class="state-status">relaxed</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="state-section">
+                    <h3>Force Calculations</h3>
+                    <div id="force-display">
+                        <div class="force-item">
+                            <span>Spring Force:</span>
+                            <span id="spring-force">0 N</span>
+                        </div>
+                        <div class="force-item">
+                            <span>Hammer Velocity:</span>
+                            <span id="hammer-velocity">0 m/s</span>
+                        </div>
+                        <div class="force-item">
+                            <span>Impact Energy:</span>
+                            <span id="impact-energy">0 J</span>
+                        </div>
+                        <div class="force-item">
+                            <span>Contact Force:</span>
+                            <span id="contact-force">0 N</span>
                         </div>
                     </div>
                 </div>
@@ -132,52 +191,54 @@
                 <h3>Stress Analysis</h3>
                 <div id="stress-display">
                     <div class="stress-item">
-                        <div class="stress-label">Rotation Stress</div>
+                        <div class="stress-label">Spring Compression</div>
                         <div class="stress-bar">
-                            <div class="stress-fill" id="rotation-stress" style="width: 0%"></div>
+                            <div class="stress-fill" id="spring-stress" style="width: 0%"></div>
                         </div>
                         <div class="stress-value">0%</div>
                     </div>
 
                     <div class="stress-item">
-                        <div class="stress-label">Friction Load</div>
+                        <div class="stress-label">Sear Engagement</div>
                         <div class="stress-bar">
-                            <div class="stress-fill" id="friction-stress" style="width: 0%"></div>
+                            <div class="stress-fill" id="sear-stress" style="width: 0%"></div>
                         </div>
                         <div class="stress-value">0%</div>
                     </div>
 
                     <div class="stress-item">
-                        <div class="stress-label">Mass Distribution</div>
+                        <div class="stress-label">Pin Shear Stress</div>
                         <div class="stress-bar">
-                            <div class="stress-fill" id="mass-stress" style="width: 0%"></div>
+                            <div class="stress-fill" id="pin-stress" style="width: 0%"></div>
                         </div>
                         <div class="stress-value">0%</div>
                     </div>
 
                     <div class="stress-item">
-                        <div class="stress-label">Contact Pressure</div>
+                        <div class="stress-label">Frame Load</div>
                         <div class="stress-bar">
-                            <div class="stress-fill" id="contact-stress" style="width: 0%"></div>
+                            <div class="stress-fill" id="frame-stress" style="width: 0%"></div>
                         </div>
                         <div class="stress-value">0%</div>
                     </div>
                 </div>
 
                 <div class="failure-points" id="failure-points">
-                    <h4>Potential Failure Points</h4>
+                    <h4>Failure Analysis</h4>
                     <div class="failure-list">
-                        <em>Run analysis to identify</em>
+                        <em>Run simulation to analyze</em>
                     </div>
                 </div>
             </div>
 
             <div class="panel-section">
-                <h3>Information</h3>
+                <h3>Controls</h3>
                 <div class="info-box">
-                    <p><strong>States:</strong> at_rest, preloaded, engaged, blocked, released</p>
-                    <p><strong>Interaction:</strong> Drag components to position, click to rotate, use controls to test</p>
-                    <p><strong>Analysis:</strong> Shows constraint satisfaction and stress distribution</p>
+                    <p><strong>Left Mouse:</strong> Rotate camera</p>
+                    <p><strong>Right Mouse:</strong> Pan camera</p>
+                    <p><strong>Scroll:</strong> Zoom in/out</p>
+                    <p><strong>Click Component:</strong> Select/Edit</p>
+                    <p><strong>Delete Key:</strong> Remove selected</p>
                 </div>
             </div>
         </aside>

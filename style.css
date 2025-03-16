@@ -106,24 +106,68 @@ body {
     font-size: 1.5em;
 }
 
-.component-preview.actuator {
-    background: linear-gradient(135deg, #3498db, #2980b9);
+.component-preview.hammer-icon,
+.component-preview.sear-icon,
+.component-preview.spring-icon,
+.component-preview.trigger-icon,
+.component-preview.pin-icon,
+.component-preview.block-icon {
+    background: var(--bg-tertiary);
+    font-size: 2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.component-preview.retention {
-    background: linear-gradient(135deg, #2ecc71, #27ae60);
+.control-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
 }
 
-.component-preview.stop {
-    background: linear-gradient(135deg, #e74c3c, #c0392b);
+.control-grid .action-btn {
+    margin-bottom: 0;
 }
 
-.component-preview.spring {
-    background: linear-gradient(135deg, #f39c12, #d68910);
+.component-properties {
+    margin-top: 10px;
 }
 
-.component-preview.pivot {
-    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+.prop-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: var(--bg-primary);
+    margin-bottom: 4px;
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
+.state-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--bg-primary);
+    margin-bottom: 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.state-status {
+    font-family: 'Courier New', monospace;
+    color: var(--accent-blue);
+    font-weight: 600;
+}
+
+.force-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--bg-primary);
+    margin-bottom: 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-family: 'Courier New', monospace;
 }
 
 .component-info {
@@ -224,14 +268,15 @@ body {
     background: #8e44ad;
 }
 
-#canvas {
+#viewport {
     flex: 1;
-    background:
-        linear-gradient(0deg, transparent 24%, var(--border-color) 25%, var(--border-color) 26%, transparent 27%, transparent 74%, var(--border-color) 75%, var(--border-color) 76%, transparent 77%, transparent),
-        linear-gradient(90deg, transparent 24%, var(--border-color) 25%, var(--border-color) 26%, transparent 27%, transparent 74%, var(--border-color) 75%, var(--border-color) 76%, transparent 77%, transparent);
-    background-size: 50px 50px;
-    background-position: -1px -1px;
-    cursor: crosshair;
+    background: var(--bg-primary);
+    position: relative;
+    cursor: grab;
+}
+
+#viewport:active {
+    cursor: grabbing;
 }
 
 .workspace-footer {
