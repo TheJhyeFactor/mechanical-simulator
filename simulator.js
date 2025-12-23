@@ -153,10 +153,10 @@ class MechanicalComponent {
     createShotgunSpring(position, rotation) {
         const group = new THREE.Group();
 
-        // Coil spring visualization
+        // Coil spring visualization - sized to fit between hammer and frame
         const curve = new THREE.CatmullRomCurve3([]);
-        const numCoils = 15;
-        const springLength = 0.4;
+        const numCoils = 12;
+        const springLength = 0.25; // Shortened to actually fit between parts
         const radius = 0.04;
 
         for (let i = 0; i <= numCoils * 4; i++) {
@@ -400,10 +400,10 @@ class MechanicalComponent {
     createBoltSpring(position, rotation) {
         const group = new THREE.Group();
 
-        // Striker spring
+        // Striker spring - sized to fit between bolt rear and striker
         const curve = new THREE.CatmullRomCurve3([]);
-        const numCoils = 20;
-        const springLength = 0.5;
+        const numCoils = 18;
+        const springLength = 0.48; // Adjusted to connect bolt rear to striker rear
         const radius = 0.035;
 
         for (let i = 0; i <= numCoils * 4; i++) {
@@ -422,7 +422,6 @@ class MechanicalComponent {
             roughness: 0.4
         });
         const coil = new THREE.Mesh(tubeGeom, springMat);
-        coil.rotation.z = Math.PI / 2;
         group.add(coil);
 
         group.position.set(position.x, position.y, position.z);
@@ -645,9 +644,10 @@ function loadShotgunSystem() {
     components.push(hammer);
     SYSTEMS.shotgun.hammer = hammer;
 
-    // 5. Spring - sits BETWEEN hammer bottom (at y: 0.05) and frame bottom (at y: -0.25)
-    // Spring is 0.4 tall, so position it at y: -0.05 to connect hammer base to frame
-    const spring = new MechanicalComponent('shotgun-spring', {x: 0.2, y: -0.05, z: 0}, {x: 0, y: 0, z: 0});
+    // 5. Spring - connects hammer spring seat (y: 0.0) to frame bottom
+    // Spring is 0.25 tall, positioned at y: -0.25 so it extends from -0.25 to 0.0
+    // Bottom touches frame, top touches hammer spring seat
+    const spring = new MechanicalComponent('shotgun-spring', {x: 0.2, y: -0.25, z: 0}, {x: 0, y: 0, z: 0});
     components.push(spring);
     SYSTEMS.shotgun.spring = spring;
 
@@ -679,20 +679,22 @@ function loadBoltSystem() {
     SYSTEMS.straightPull.sear = sear;
 
     // 4. Bolt body - in raceway at y: 0.08 (slightly above receiver centerline)
-    // Bolt is 1.2 long, centered at x: 0
+    // Bolt is 1.2 long, extends from x: -0.6 to x: 0.6
     const bolt = new MechanicalComponent('bolt-body', {x: 0, y: 0.08, z: 0}, {x: 0, y: 0, z: 0});
     components.push(bolt);
     SYSTEMS.straightPull.bolt = bolt;
 
-    // 5. Striker - INSIDE bolt, striker is 0.6 long
-    // Position at x: -0.15 so it's inside the bolt body, aligned at y: 0.08
-    const hammer = new MechanicalComponent('bolt-hammer', {x: -0.15, y: 0.08, z: 0}, {x: 0, y: 0, z: 0});
+    // 5. Striker - INSIDE bolt body, positioned forward
+    // Striker body 0.6 long, knob extends to rear at x: -0.13 (world)
+    // Tip extends forward at x: 0.705 (slightly beyond bolt front)
+    const hammer = new MechanicalComponent('bolt-hammer', {x: 0.25, y: 0.08, z: 0}, {x: 0, y: 0, z: 0});
     components.push(hammer);
     SYSTEMS.straightPull.hammer = hammer;
 
-    // 6. Spring - BETWEEN striker rear (-0.45) and bolt rear (-0.6)
-    // Spring is 0.5 long horizontally, position at x: -0.45 so it connects
-    const spring = new MechanicalComponent('bolt-spring', {x: -0.45, y: 0.08, z: 0}, {x: 0, y: 0, z: 0});
+    // 6. Spring - Connects bolt rear (x: -0.6) to striker rear (x: -0.12)
+    // Spring is 0.48 long, positioned at bolt rear
+    // Extends from x: -0.6 to x: -0.12, touching striker knob
+    const spring = new MechanicalComponent('bolt-spring', {x: -0.6, y: 0.08, z: 0}, {x: 0, y: 0, z: 0});
     components.push(spring);
     SYSTEMS.straightPull.spring = spring;
 
@@ -735,8 +737,9 @@ function cockBolt() {
 
     updateStatus('active', 'Cocking striker...');
 
-    // Pull striker back to x: -0.35
-    animatePosition(sys.hammer.mesh, -0.35, 'x', 600, () => {
+    // Pull striker back to x: -0.3 (from rest position x: 0.25)
+    // This compresses the spring between bolt rear and striker
+    animatePosition(sys.hammer.mesh, -0.3, 'x', 600, () => {
         sys.hammer.state = 'cocked';
         updateStatus('idle', 'Striker cocked');
         updateForceDisplay(55, 0, 0, 70);
@@ -784,8 +787,8 @@ function fireBolt() {
 
     updateStatus('active', 'Releasing striker...');
 
-    // Striker moves forward to rest position
-    animatePosition(sys.hammer.mesh, -0.15, 'x', 180, () => {
+    // Striker moves forward to rest position x: 0.25
+    animatePosition(sys.hammer.mesh, 0.25, 'x', 180, () => {
         sys.hammer.state = 'fired';
         updateStatus('idle', 'Striker released');
         updateForceDisplay(0, 12.5, 3.91, 0);
@@ -808,7 +811,7 @@ function resetSystem() {
         // Reset bolt striker to rest position
         const sys = SYSTEMS.straightPull;
         if (sys && sys.hammer) {
-            sys.hammer.mesh.position.x = -0.15;
+            sys.hammer.mesh.position.x = 0.25;
             sys.hammer.state = 'at_rest';
         }
     }
