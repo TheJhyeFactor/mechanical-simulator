@@ -605,6 +605,7 @@ function setupEventListeners() {
     document.getElementById('fire-system').addEventListener('click', fireSystem);
     document.getElementById('reset-system').addEventListener('click', resetSystem);
     document.getElementById('clear-all').addEventListener('click', clearAll);
+    document.getElementById('toggle-xray').addEventListener('click', toggleXRayMode);
 
     // Camera views
     document.getElementById('view-front').addEventListener('click', () => setCameraView('front'));
@@ -622,31 +623,31 @@ function loadShotgunSystem() {
 
     updateStatus('idle', 'Loading single-barrel shotgun system...');
 
-    // Frame
-    const frame = new MechanicalComponent('shotgun-frame', {x: 0, y: 0.2, z: 0}, {x: 0, y: 0, z: 0});
+    // Frame/receiver - centered at origin
+    const frame = new MechanicalComponent('shotgun-frame', {x: 0, y: 0, z: 0}, {x: 0, y: 0, z: 0});
     components.push(frame);
 
-    // Hammer (pivot at origin, striker points up)
-    const hammer = new MechanicalComponent('shotgun-hammer', {x: 0.2, y: 0.2, z: 0}, {x: 0, y: 0, z: 0});
+    // Hammer - pivot point at (0.2, 0.1, 0) inside receiver
+    const hammer = new MechanicalComponent('shotgun-hammer', {x: 0.2, y: 0.1, z: 0}, {x: 0, y: 0, z: 0});
     components.push(hammer);
     SYSTEMS.shotgun = { hammer };
 
-    // Sear (below and forward of hammer)
-    const sear = new MechanicalComponent('shotgun-sear', {x: 0.05, y: 0.05, z: 0}, {x: 0, y: 0, z: 0});
-    components.push(sear);
-    SYSTEMS.shotgun.sear = sear;
-
-    // Hammer spring (between frame and hammer)
-    const spring = new MechanicalComponent('shotgun-spring', {x: 0.2, y: -0.15, z: 0}, {x: 0, y: 0, z: 0});
+    // Hammer spring - DIRECTLY UNDER hammer, vertical orientation
+    const spring = new MechanicalComponent('shotgun-spring', {x: 0.2, y: -0.1, z: 0}, {x: 0, y: 0, z: 0});
     components.push(spring);
     SYSTEMS.shotgun.spring = spring;
 
-    // Trigger (below sear)
-    const trigger = new MechanicalComponent('shotgun-trigger', {x: -0.1, y: -0.15, z: 0}, {x: 0, y: 0, z: 0});
+    // Sear - positioned to catch hammer notch
+    const sear = new MechanicalComponent('shotgun-sear', {x: 0.1, y: -0.05, z: 0}, {x: 0, y: 0, z: 0});
+    components.push(sear);
+    SYSTEMS.shotgun.sear = sear;
+
+    // Trigger - below sear, inside trigger guard
+    const trigger = new MechanicalComponent('shotgun-trigger', {x: -0.2, y: -0.25, z: 0}, {x: 0, y: 0, z: 0});
     components.push(trigger);
     SYSTEMS.shotgun.trigger = trigger;
 
-    updateStatus('idle', 'Single-barrel shotgun loaded');
+    updateStatus('idle', 'Single-barrel shotgun loaded - Assembled');
     updateUI();
 }
 
@@ -656,36 +657,36 @@ function loadBoltSystem() {
 
     updateStatus('idle', 'Loading straight-pull bolt system...');
 
-    // Frame
-    const frame = new MechanicalComponent('bolt-frame', {x: 0, y: 0.2, z: 0}, {x: 0, y: 0, z: 0});
+    // Receiver/frame - centered
+    const frame = new MechanicalComponent('bolt-frame', {x: 0, y: 0, z: 0}, {x: 0, y: 0, z: 0});
     components.push(frame);
 
-    // Bolt body
-    const bolt = new MechanicalComponent('bolt-body', {x: 0, y: 0.28, z: 0}, {x: 0, y: 0, z: 0});
+    // Bolt body - in the bolt raceway
+    const bolt = new MechanicalComponent('bolt-body', {x: 0, y: 0.08, z: 0}, {x: 0, y: 0, z: 0});
     components.push(bolt);
     SYSTEMS.straightPull = { bolt };
 
-    // Striker (inside bolt)
-    const hammer = new MechanicalComponent('bolt-hammer', {x: -0.1, y: 0.28, z: 0}, {x: 0, y: 0, z: 0});
+    // Striker - INSIDE bolt body, aligned
+    const hammer = new MechanicalComponent('bolt-hammer', {x: -0.1, y: 0.08, z: 0}, {x: 0, y: 0, z: 0});
     components.push(hammer);
     SYSTEMS.straightPull.hammer = hammer;
 
-    // Striker spring
-    const spring = new MechanicalComponent('bolt-spring', {x: -0.35, y: 0.28, z: 0}, {x: 0, y: 0, z: 0});
+    // Striker spring - BEHIND striker, horizontal orientation
+    const spring = new MechanicalComponent('bolt-spring', {x: -0.35, y: 0.08, z: 0}, {x: 0, y: 0, z: 0});
     components.push(spring);
     SYSTEMS.straightPull.spring = spring;
 
-    // Sear
-    const sear = new MechanicalComponent('bolt-sear', {x: -0.25, y: 0.15, z: 0}, {x: 0, y: 0, z: 0});
+    // Sear - positioned to catch striker notch from below
+    const sear = new MechanicalComponent('bolt-sear', {x: -0.25, y: -0.05, z: 0}, {x: 0, y: 0, z: 0});
     components.push(sear);
     SYSTEMS.straightPull.sear = sear;
 
-    // Trigger
-    const trigger = new MechanicalComponent('bolt-trigger', {x: -0.3, y: -0.05, z: 0}, {x: 0, y: 0, z: 0});
+    // Trigger - in trigger housing
+    const trigger = new MechanicalComponent('bolt-trigger', {x: -0.3, y: -0.15, z: 0}, {x: 0, y: 0, z: 0});
     components.push(trigger);
     SYSTEMS.straightPull.trigger = trigger;
 
-    updateStatus('idle', 'Straight-pull bolt loaded');
+    updateStatus('idle', 'Straight-pull bolt loaded - Assembled');
     updateUI();
 }
 
@@ -724,12 +725,17 @@ function cockBolt() {
 
     updateStatus('active', 'Cocking striker...');
 
-    // Pull striker back
-    animatePosition(sys.hammer.mesh, -0.25, 'x', 600, () => {
+    // Pull striker back (and spring compresses with it)
+    animatePosition(sys.hammer.mesh, -0.35, 'x', 600, () => {
         sys.hammer.state = 'cocked';
         updateStatus('idle', 'Striker cocked');
         updateForceDisplay(55, 0, 0, 70);
     });
+
+    // Compress spring visually
+    if (sys.spring) {
+        animatePosition(sys.spring.mesh, -0.5, 'x', 600);
+    }
 }
 
 function fireSystem() {
@@ -783,20 +789,24 @@ function fireBolt() {
 }
 
 function resetSystem() {
-    components.forEach(comp => {
-        if (comp.mesh) {
-            comp.mesh.rotation.set(
-                comp.originalRotation.x,
-                comp.originalRotation.y,
-                comp.originalRotation.z
-            );
-            // Reset position if it was animated
-            if (currentSystem === 'bolt' && comp.type === 'bolt-hammer') {
-                comp.mesh.position.x = -0.1;
-            }
+    if (currentSystem === 'shotgun') {
+        // Reset shotgun
+        const sys = SYSTEMS.shotgun;
+        if (sys && sys.hammer) {
+            sys.hammer.mesh.rotation.z = 0;
+            sys.hammer.state = 'at_rest';
         }
-        comp.state = 'at_rest';
-    });
+    } else if (currentSystem === 'bolt') {
+        // Reset bolt striker and spring positions
+        const sys = SYSTEMS.straightPull;
+        if (sys && sys.hammer) {
+            sys.hammer.mesh.position.x = -0.1;
+            sys.hammer.state = 'at_rest';
+        }
+        if (sys && sys.spring) {
+            sys.spring.mesh.position.x = -0.35;
+        }
+    }
 
     updateStatus('idle', 'System reset');
     updateForceDisplay(0, 0, 0, 0);
@@ -811,6 +821,43 @@ function clearAll() {
     selectedComponent = null;
     updateUI();
     updateForceDisplay(0, 0, 0, 0);
+}
+
+// X-Ray / Transparency Mode
+let xrayMode = false;
+
+function toggleXRayMode() {
+    xrayMode = !xrayMode;
+    const btn = document.getElementById('toggle-xray');
+    btn.textContent = xrayMode ? 'Normal View' : 'X-Ray View';
+
+    components.forEach(comp => {
+        if (!comp.mesh) return;
+
+        comp.mesh.traverse(child => {
+            if (child.isMesh) {
+                if (xrayMode) {
+                    // Make frame/receiver semi-transparent
+                    if (comp.type === 'shotgun-frame' || comp.type === 'bolt-frame' || comp.type === 'bolt-body') {
+                        child.material.transparent = true;
+                        child.material.opacity = 0.2;
+                        child.material.depthWrite = false;
+                    } else {
+                        // Keep internal parts visible
+                        child.material.transparent = false;
+                        child.material.opacity = 1.0;
+                    }
+                } else {
+                    // Reset to normal
+                    child.material.transparent = false;
+                    child.material.opacity = 1.0;
+                    child.material.depthWrite = true;
+                }
+            }
+        });
+    });
+
+    updateStatus('idle', xrayMode ? 'X-Ray mode enabled' : 'Normal view restored');
 }
 
 // Animation helpers
