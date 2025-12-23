@@ -1,257 +1,529 @@
 // 3D Mechanical System Designer
-// Educational physics simulator with Three.js
+// Educational physics simulator with realistic mechanical assemblies
 
 let scene, camera, renderer, controls;
 let components = [];
 let selectedComponent = null;
 let raycaster, mouse;
-let gridHelper, axesHelper;
-let physicsEnabled = false;
-let showForces = false;
+let currentSystem = null;
+let animationFrameId = null;
 
-// System state
-let hammerComponent = null;
-let searComponent = null;
-let springComponent = null;
-let triggerComponent = null;
-
-const PHYSICS_CONFIG = {
-    gravity: 9.81,
-    springConstant: 500, // N/m (abstract)
-    hammerMass: 0.05, // kg (abstract)
-    friction: 0.3
+// System configurations
+const SYSTEMS = {
+    shotgun: null,
+    straightPull: null
 };
 
-// Component definitions with realistic geometries
+// Component class with proper mechanical design
 class MechanicalComponent {
-    constructor(type, position = {x: 0, y: 0, z: 0}) {
+    constructor(type, position = {x: 0, y: 0, z: 0}, rotation = {x: 0, y: 0, z: 0}) {
         this.type = type;
         this.mesh = null;
         this.state = 'at_rest';
-        this.velocity = {x: 0, y: 0, z: 0};
-        this.angularVelocity = 0;
-        this.mass = 0.01;
-        this.rotation = 0;
-        this.createMesh(position);
+        this.originalRotation = {...rotation};
+        this.createMesh(position, rotation);
     }
 
-    createMesh(position) {
-        let geometry, material;
-
+    createMesh(position, rotation) {
         switch(this.type) {
-            case 'hammer':
-                this.createHammer(position);
+            case 'shotgun-hammer':
+                this.createShotgunHammer(position, rotation);
                 break;
-            case 'sear':
-                this.createSear(position);
+            case 'shotgun-sear':
+                this.createShotgunSear(position, rotation);
                 break;
-            case 'spring':
-                this.createSpring(position);
+            case 'shotgun-spring':
+                this.createShotgunSpring(position, rotation);
                 break;
-            case 'trigger':
-                this.createTrigger(position);
+            case 'shotgun-trigger':
+                this.createShotgunTrigger(position, rotation);
                 break;
-            case 'pin':
-                this.createPin(position);
+            case 'shotgun-frame':
+                this.createShotgunFrame(position, rotation);
                 break;
-            case 'block':
-                this.createBlock(position);
+            case 'bolt-body':
+                this.createBoltBody(position, rotation);
+                break;
+            case 'bolt-hammer':
+                this.createBoltHammer(position, rotation);
+                break;
+            case 'bolt-sear':
+                this.createBoltSear(position, rotation);
+                break;
+            case 'bolt-spring':
+                this.createBoltSpring(position, rotation);
+                break;
+            case 'bolt-trigger':
+                this.createBoltTrigger(position, rotation);
+                break;
+            case 'bolt-frame':
+                this.createBoltFrame(position, rotation);
                 break;
         }
     }
 
-    createHammer(position) {
-        // Create hammer with realistic geometry
+    // SHOTGUN SYSTEM COMPONENTS
+    createShotgunHammer(position, rotation) {
         const group = new THREE.Group();
 
-        // Hammer body
-        const bodyGeom = new THREE.BoxGeometry(0.8, 0.15, 0.15);
-        const bodyMat = new THREE.MeshStandardMaterial({
-            color: 0x4a5568,
-            metalness: 0.8,
+        // Main hammer body - L-shaped
+        const bodyGeom = new THREE.BoxGeometry(0.15, 0.6, 0.12);
+        const hammerMat = new THREE.MeshStandardMaterial({
+            color: 0x2c3e50,
+            metalness: 0.9,
             roughness: 0.2
         });
-        const body = new THREE.Mesh(bodyGeom, bodyMat);
-        body.position.set(0.4, 0, 0);
+        const body = new THREE.Mesh(bodyGeom, hammerMat);
+        body.position.set(0, 0.3, 0);
         group.add(body);
 
-        // Hammer striking surface
-        const strikeGeom = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-        const strike = new THREE.Mesh(strikeGeom, bodyMat);
-        strike.position.set(0.9, 0, 0);
-        group.add(strike);
+        // Striker face (top of hammer)
+        const strikerGeom = new THREE.BoxGeometry(0.18, 0.15, 0.12);
+        const striker = new THREE.Mesh(strikerGeom, hammerMat);
+        striker.position.set(0, 0.65, 0);
+        group.add(striker);
 
-        // Pivot hole
-        const pivotGeom = new THREE.CylinderGeometry(0.05, 0.05, 0.2, 16);
-        const pivotMat = new THREE.MeshStandardMaterial({ color: 0x2d3748 });
-        const pivot = new THREE.Mesh(pivotGeom, pivotMat);
-        pivot.rotation.z = Math.PI / 2;
-        group.add(pivot);
-
-        // Sear notch
-        const notchGeom = new THREE.BoxGeometry(0.15, 0.08, 0.15);
-        const notch = new THREE.Mesh(notchGeom, new THREE.MeshStandardMaterial({ color: 0x3498db }));
-        notch.position.set(-0.3, -0.1, 0);
+        // Sear notch (engagement point)
+        const notchGeom = new THREE.BoxGeometry(0.12, 0.08, 0.12);
+        const notchMat = new THREE.MeshStandardMaterial({ color: 0x3498db, metalness: 0.8, roughness: 0.3 });
+        const notch = new THREE.Mesh(notchGeom, notchMat);
+        notch.position.set(-0.1, 0.15, 0);
         group.add(notch);
 
-        group.position.set(position.x, position.y, position.z);
-        this.mesh = group;
-        this.mass = 0.05;
-        scene.add(group);
-    }
-
-    createSear(position) {
-        const group = new THREE.Group();
-
-        // Sear body
-        const bodyGeom = new THREE.BoxGeometry(0.4, 0.15, 0.12);
-        const bodyMat = new THREE.MeshStandardMaterial({
-            color: 0x2ecc71,
-            metalness: 0.7,
-            roughness: 0.3
-        });
-        const body = new THREE.Mesh(bodyGeom, bodyMat);
-        group.add(body);
-
-        // Engagement hook
-        const hookGeom = new THREE.BoxGeometry(0.1, 0.15, 0.12);
-        const hook = new THREE.Mesh(hookGeom, bodyMat);
-        hook.position.set(0.2, 0.08, 0);
-        group.add(hook);
-
-        // Pivot
+        // Pivot hole
         const pivotGeom = new THREE.CylinderGeometry(0.04, 0.04, 0.15, 16);
-        const pivot = new THREE.Mesh(pivotGeom, new THREE.MeshStandardMaterial({ color: 0x1a202c }));
+        const pivotMat = new THREE.MeshStandardMaterial({ color: 0x34495e, metalness: 0.7, roughness: 0.5 });
+        const pivot = new THREE.Mesh(pivotGeom, pivotMat);
         pivot.rotation.z = Math.PI / 2;
+        pivot.position.set(0, 0, 0);
         group.add(pivot);
 
+        // Hammer spring seat (bottom)
+        const seatGeom = new THREE.BoxGeometry(0.12, 0.1, 0.12);
+        const seat = new THREE.Mesh(seatGeom, hammerMat);
+        seat.position.set(0, -0.05, 0);
+        group.add(seat);
+
         group.position.set(position.x, position.y, position.z);
+        group.rotation.set(rotation.x, rotation.y, rotation.z);
         this.mesh = group;
-        this.mass = 0.02;
+        this.mesh.userData.component = this;
         scene.add(group);
     }
 
-    createSpring(position) {
+    createShotgunSear(position, rotation) {
         const group = new THREE.Group();
 
-        // Spring coils
-        const coilCurve = new THREE.CatmullRomCurve3([]);
-        for (let i = 0; i < 20; i++) {
-            const angle = i * Math.PI / 3;
-            const radius = 0.08;
-            const x = i * 0.03;
-            const y = Math.cos(angle) * radius;
+        // Sear lever body
+        const bodyGeom = new THREE.BoxGeometry(0.3, 0.1, 0.12);
+        const searMat = new THREE.MeshStandardMaterial({
+            color: 0x27ae60,
+            metalness: 0.8,
+            roughness: 0.25
+        });
+        const body = new THREE.Mesh(bodyGeom, searMat);
+        group.add(body);
+
+        // Engagement hook (catches hammer notch)
+        const hookGeom = new THREE.BoxGeometry(0.08, 0.12, 0.12);
+        const hook = new THREE.Mesh(hookGeom, new THREE.MeshStandardMaterial({ color: 0x2ecc71, metalness: 0.8, roughness: 0.3 }));
+        hook.position.set(0.12, 0.1, 0);
+        group.add(hook);
+
+        // Pivot point
+        const pivotGeom = new THREE.CylinderGeometry(0.03, 0.03, 0.15, 16);
+        const pivot = new THREE.Mesh(pivotGeom, new THREE.MeshStandardMaterial({ color: 0x34495e, metalness: 0.7, roughness: 0.5 }));
+        pivot.rotation.z = Math.PI / 2;
+        pivot.position.set(-0.1, 0, 0);
+        group.add(pivot);
+
+        // Trigger connection point
+        const connGeom = new THREE.BoxGeometry(0.06, 0.08, 0.08);
+        const conn = new THREE.Mesh(connGeom, searMat);
+        conn.position.set(-0.15, -0.08, 0);
+        group.add(conn);
+
+        group.position.set(position.x, position.y, position.z);
+        group.rotation.set(rotation.x, rotation.y, rotation.z);
+        this.mesh = group;
+        this.mesh.userData.component = this;
+        scene.add(group);
+    }
+
+    createShotgunSpring(position, rotation) {
+        const group = new THREE.Group();
+
+        // Coil spring visualization
+        const curve = new THREE.CatmullRomCurve3([]);
+        const numCoils = 15;
+        const springLength = 0.4;
+        const radius = 0.04;
+
+        for (let i = 0; i <= numCoils * 4; i++) {
+            const t = i / (numCoils * 4);
+            const angle = i * Math.PI / 2;
+            const y = t * springLength;
+            const x = Math.cos(angle) * radius;
             const z = Math.sin(angle) * radius;
-            coilCurve.points.push(new THREE.Vector3(x, y, z));
+            curve.points.push(new THREE.Vector3(x, y, z));
         }
 
-        const tubeGeom = new THREE.TubeGeometry(coilCurve, 64, 0.015, 8, false);
-        const tubeMat = new THREE.MeshStandardMaterial({
+        const tubeGeom = new THREE.TubeGeometry(curve, 64, 0.01, 8, false);
+        const springMat = new THREE.MeshStandardMaterial({
             color: 0xf39c12,
             metalness: 0.6,
             roughness: 0.4
         });
-        const coil = new THREE.Mesh(tubeGeom, tubeMat);
+        const coil = new THREE.Mesh(tubeGeom, springMat);
         group.add(coil);
 
         // End caps
-        const capGeom = new THREE.CylinderGeometry(0.1, 0.1, 0.02, 16);
-        const capMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50 });
+        const capGeom = new THREE.CylinderGeometry(0.05, 0.05, 0.02, 16);
+        const capMat = new THREE.MeshStandardMaterial({ color: 0x34495e, metalness: 0.8, roughness: 0.3 });
 
         const cap1 = new THREE.Mesh(capGeom, capMat);
-        cap1.rotation.z = Math.PI / 2;
         cap1.position.set(0, 0, 0);
         group.add(cap1);
 
         const cap2 = new THREE.Mesh(capGeom, capMat);
-        cap2.rotation.z = Math.PI / 2;
-        cap2.position.set(0.57, 0, 0);
+        cap2.position.set(0, springLength, 0);
         group.add(cap2);
 
         group.position.set(position.x, position.y, position.z);
+        group.rotation.set(rotation.x, rotation.y, rotation.z);
         this.mesh = group;
-        this.mass = 0.008;
+        this.mesh.userData.component = this;
         scene.add(group);
     }
 
-    createTrigger(position) {
+    createShotgunTrigger(position, rotation) {
         const group = new THREE.Group();
 
-        // Trigger lever
-        const leverGeom = new THREE.BoxGeometry(0.5, 0.1, 0.15);
-        const leverMat = new THREE.MeshStandardMaterial({
+        // Trigger blade
+        const bladeGeom = new THREE.BoxGeometry(0.08, 0.25, 0.15);
+        const triggerMat = new THREE.MeshStandardMaterial({
             color: 0xe74c3c,
-            metalness: 0.5,
-            roughness: 0.5
+            metalness: 0.6,
+            roughness: 0.4
         });
-        const lever = new THREE.Mesh(leverGeom, leverMat);
-        lever.position.set(0.25, 0, 0);
+        const blade = new THREE.Mesh(bladeGeom, triggerMat);
+        blade.position.set(0, -0.15, 0);
+        group.add(blade);
+
+        // Trigger lever (connects to sear)
+        const leverGeom = new THREE.BoxGeometry(0.3, 0.08, 0.12);
+        const lever = new THREE.Mesh(leverGeom, triggerMat);
+        lever.position.set(0.1, 0, 0);
         group.add(lever);
 
-        // Trigger face
-        const faceGeom = new THREE.BoxGeometry(0.15, 0.25, 0.15);
-        const face = new THREE.Mesh(faceGeom, leverMat);
-        face.position.set(0.6, -0.12, 0);
-        group.add(face);
+        // Pivot
+        const pivotGeom = new THREE.CylinderGeometry(0.03, 0.03, 0.18, 16);
+        const pivot = new THREE.Mesh(pivotGeom, new THREE.MeshStandardMaterial({ color: 0x34495e, metalness: 0.7, roughness: 0.5 }));
+        pivot.rotation.z = Math.PI / 2;
+        group.add(pivot);
+
+        // Sear connector
+        const connGeom = new THREE.BoxGeometry(0.06, 0.1, 0.1);
+        const conn = new THREE.Mesh(connGeom, triggerMat);
+        conn.position.set(0.22, 0.05, 0);
+        group.add(conn);
+
+        group.position.set(position.x, position.y, position.z);
+        group.rotation.set(rotation.x, rotation.y, rotation.z);
+        this.mesh = group;
+        this.mesh.userData.component = this;
+        scene.add(group);
+    }
+
+    createShotgunFrame(position, rotation) {
+        const group = new THREE.Group();
+
+        // Main receiver block
+        const receiverGeom = new THREE.BoxGeometry(0.8, 0.5, 0.3);
+        const frameMat = new THREE.MeshStandardMaterial({
+            color: 0x7f8c8d,
+            metalness: 0.5,
+            roughness: 0.6
+        });
+        const receiver = new THREE.Mesh(receiverGeom, frameMat);
+        group.add(receiver);
+
+        // Trigger guard
+        const guardGeom = new THREE.TorusGeometry(0.15, 0.02, 8, 16, Math.PI);
+        const guard = new THREE.Mesh(guardGeom, frameMat);
+        guard.rotation.x = Math.PI / 2;
+        guard.position.set(-0.2, -0.3, 0);
+        group.add(guard);
+
+        // Mounting holes
+        const holeGeom = new THREE.CylinderGeometry(0.04, 0.04, 0.35, 16);
+        const holeMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50, metalness: 0.9, roughness: 0.2 });
+
+        const hole1 = new THREE.Mesh(holeGeom, holeMat);
+        hole1.rotation.z = Math.PI / 2;
+        hole1.position.set(0.2, 0.1, 0);
+        group.add(hole1);
+
+        const hole2 = new THREE.Mesh(holeGeom, holeMat);
+        hole2.rotation.z = Math.PI / 2;
+        hole2.position.set(-0.1, -0.1, 0);
+        group.add(hole2);
+
+        group.position.set(position.x, position.y, position.z);
+        group.rotation.set(rotation.x, rotation.y, rotation.z);
+        this.mesh = group;
+        this.mesh.userData.component = this;
+        scene.add(group);
+    }
+
+    // STRAIGHT-PULL BOLT SYSTEM COMPONENTS
+    createBoltBody(position, rotation) {
+        const group = new THREE.Group();
+
+        // Bolt cylinder
+        const boltGeom = new THREE.CylinderGeometry(0.08, 0.08, 1.2, 16);
+        const boltMat = new THREE.MeshStandardMaterial({
+            color: 0x34495e,
+            metalness: 0.9,
+            roughness: 0.15
+        });
+        const bolt = new THREE.Mesh(boltGeom, boltMat);
+        bolt.rotation.z = Math.PI / 2;
+        group.add(bolt);
+
+        // Bolt handle
+        const handleGeom = new THREE.BoxGeometry(0.15, 0.08, 0.25);
+        const handle = new THREE.Mesh(handleGeom, boltMat);
+        handle.position.set(0.5, 0.12, 0);
+        group.add(handle);
+
+        // Cocking piece (rear of bolt)
+        const cockingGeom = new THREE.CylinderGeometry(0.06, 0.06, 0.2, 16);
+        const cocking = new THREE.Mesh(cockingGeom, new THREE.MeshStandardMaterial({ color: 0x2c3e50, metalness: 0.9, roughness: 0.2 }));
+        cocking.rotation.z = Math.PI / 2;
+        cocking.position.set(-0.7, 0, 0);
+        group.add(cocking);
+
+        // Extractor claw
+        const extractorGeom = new THREE.BoxGeometry(0.05, 0.05, 0.1);
+        const extractor = new THREE.Mesh(extractorGeom, new THREE.MeshStandardMaterial({ color: 0xe74c3c, metalness: 0.8, roughness: 0.3 }));
+        extractor.position.set(0.6, 0, 0.06);
+        group.add(extractor);
+
+        group.position.set(position.x, position.y, position.z);
+        group.rotation.set(rotation.x, rotation.y, rotation.z);
+        this.mesh = group;
+        this.mesh.userData.component = this;
+        scene.add(group);
+    }
+
+    createBoltHammer(position, rotation) {
+        const group = new THREE.Group();
+
+        // Striker body (internal hammer)
+        const strikerGeom = new THREE.CylinderGeometry(0.03, 0.03, 0.6, 12);
+        const strikerMat = new THREE.MeshStandardMaterial({
+            color: 0x2c3e50,
+            metalness: 0.9,
+            roughness: 0.1
+        });
+        const striker = new THREE.Mesh(strikerGeom, strikerMat);
+        striker.rotation.z = Math.PI / 2;
+        group.add(striker);
+
+        // Striker tip (firing pin)
+        const tipGeom = new THREE.CylinderGeometry(0.015, 0.015, 0.15, 12);
+        const tip = new THREE.Mesh(tipGeom, strikerMat);
+        tip.rotation.z = Math.PI / 2;
+        tip.position.set(0.38, 0, 0);
+        group.add(tip);
+
+        // Sear notch
+        const notchGeom = new THREE.BoxGeometry(0.08, 0.05, 0.05);
+        const notch = new THREE.Mesh(notchGeom, new THREE.MeshStandardMaterial({ color: 0x3498db, metalness: 0.8, roughness: 0.3 }));
+        notch.position.set(-0.25, -0.04, 0);
+        group.add(notch);
+
+        // Cocking knob (rear)
+        const knobGeom = new THREE.CylinderGeometry(0.05, 0.05, 0.08, 16);
+        const knob = new THREE.Mesh(knobGeom, new THREE.MeshStandardMaterial({ color: 0x7f8c8d, metalness: 0.6, roughness: 0.4 }));
+        knob.rotation.z = Math.PI / 2;
+        knob.position.set(-0.34, 0, 0);
+        group.add(knob);
+
+        group.position.set(position.x, position.y, position.z);
+        group.rotation.set(rotation.x, rotation.y, rotation.z);
+        this.mesh = group;
+        this.mesh.userData.component = this;
+        scene.add(group);
+    }
+
+    createBoltSear(position, rotation) {
+        const group = new THREE.Group();
+
+        // Sear body
+        const bodyGeom = new THREE.BoxGeometry(0.12, 0.25, 0.08);
+        const searMat = new THREE.MeshStandardMaterial({
+            color: 0x27ae60,
+            metalness: 0.8,
+            roughness: 0.25
+        });
+        const body = new THREE.Mesh(bodyGeom, searMat);
+        group.add(body);
+
+        // Engagement surface
+        const engageGeom = new THREE.BoxGeometry(0.08, 0.08, 0.08);
+        const engage = new THREE.Mesh(engageGeom, new THREE.MeshStandardMaterial({ color: 0x2ecc71, metalness: 0.8, roughness: 0.3 }));
+        engage.position.set(0, 0.15, 0);
+        group.add(engage);
+
+        // Pivot pin
+        const pivotGeom = new THREE.CylinderGeometry(0.025, 0.025, 0.12, 16);
+        const pivot = new THREE.Mesh(pivotGeom, new THREE.MeshStandardMaterial({ color: 0x34495e, metalness: 0.7, roughness: 0.5 }));
+        pivot.rotation.z = Math.PI / 2;
+        pivot.position.set(0, -0.05, 0);
+        group.add(pivot);
+
+        // Trigger connector
+        const connGeom = new THREE.BoxGeometry(0.08, 0.06, 0.06);
+        const conn = new THREE.Mesh(connGeom, searMat);
+        conn.position.set(0, -0.15, 0);
+        group.add(conn);
+
+        group.position.set(position.x, position.y, position.z);
+        group.rotation.set(rotation.x, rotation.y, rotation.z);
+        this.mesh = group;
+        this.mesh.userData.component = this;
+        scene.add(group);
+    }
+
+    createBoltSpring(position, rotation) {
+        const group = new THREE.Group();
+
+        // Striker spring
+        const curve = new THREE.CatmullRomCurve3([]);
+        const numCoils = 20;
+        const springLength = 0.5;
+        const radius = 0.035;
+
+        for (let i = 0; i <= numCoils * 4; i++) {
+            const t = i / (numCoils * 4);
+            const angle = i * Math.PI / 2;
+            const x = t * springLength;
+            const y = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+            curve.points.push(new THREE.Vector3(x, y, z));
+        }
+
+        const tubeGeom = new THREE.TubeGeometry(curve, 80, 0.008, 8, false);
+        const springMat = new THREE.MeshStandardMaterial({
+            color: 0xf39c12,
+            metalness: 0.6,
+            roughness: 0.4
+        });
+        const coil = new THREE.Mesh(tubeGeom, springMat);
+        coil.rotation.z = Math.PI / 2;
+        group.add(coil);
+
+        group.position.set(position.x, position.y, position.z);
+        group.rotation.set(rotation.x, rotation.y, rotation.z);
+        this.mesh = group;
+        this.mesh.userData.component = this;
+        scene.add(group);
+    }
+
+    createBoltTrigger(position, rotation) {
+        const group = new THREE.Group();
+
+        // Trigger blade
+        const bladeGeom = new THREE.BoxGeometry(0.1, 0.3, 0.15);
+        const triggerMat = new THREE.MeshStandardMaterial({
+            color: 0xe74c3c,
+            metalness: 0.6,
+            roughness: 0.4
+        });
+        const blade = new THREE.Mesh(bladeGeom, triggerMat);
+        blade.position.set(0, -0.2, 0);
+        group.add(blade);
+
+        // Trigger bar (connects to sear)
+        const barGeom = new THREE.CylinderGeometry(0.02, 0.02, 0.4, 12);
+        const bar = new THREE.Mesh(barGeom, new THREE.MeshStandardMaterial({ color: 0xc0392b, metalness: 0.7, roughness: 0.3 }));
+        bar.rotation.z = Math.PI / 2;
+        bar.position.set(0.15, 0.05, 0);
+        group.add(bar);
 
         // Pivot
-        const pivotGeom = new THREE.CylinderGeometry(0.04, 0.04, 0.18, 16);
-        const pivot = new THREE.Mesh(pivotGeom, new THREE.MeshStandardMaterial({ color: 0x1a202c }));
+        const pivotGeom = new THREE.CylinderGeometry(0.03, 0.03, 0.18, 16);
+        const pivot = new THREE.Mesh(pivotGeom, new THREE.MeshStandardMaterial({ color: 0x34495e, metalness: 0.7, roughness: 0.5 }));
         pivot.rotation.z = Math.PI / 2;
         group.add(pivot);
 
         group.position.set(position.x, position.y, position.z);
+        group.rotation.set(rotation.x, rotation.y, rotation.z);
         this.mesh = group;
-        this.mass = 0.015;
+        this.mesh.userData.component = this;
         scene.add(group);
     }
 
-    createPin(position) {
-        const geometry = new THREE.CylinderGeometry(0.05, 0.05, 0.3, 16);
-        const material = new THREE.MeshStandardMaterial({
-            color: 0x34495e,
-            metalness: 0.9,
-            roughness: 0.1
-        });
-        this.mesh = new THREE.Mesh(geometry, material);
-        this.mesh.position.set(position.x, position.y, position.z);
-        this.mesh.rotation.z = Math.PI / 2;
-        this.mass = 0.005;
-        scene.add(this.mesh);
-    }
+    createBoltFrame(position, rotation) {
+        const group = new THREE.Group();
 
-    createBlock(position) {
-        const geometry = new THREE.BoxGeometry(1.0, 0.6, 0.4);
-        const material = new THREE.MeshStandardMaterial({
+        // Receiver body
+        const receiverGeom = new THREE.BoxGeometry(1.5, 0.4, 0.25);
+        const frameMat = new THREE.MeshStandardMaterial({
             color: 0x7f8c8d,
-            metalness: 0.3,
-            roughness: 0.7
+            metalness: 0.5,
+            roughness: 0.6
         });
-        this.mesh = new THREE.Mesh(geometry, material);
-        this.mesh.position.set(position.x, position.y, position.z);
-        this.mass = 0.1;
-        scene.add(this.mesh);
+        const receiver = new THREE.Mesh(receiverGeom, frameMat);
+        group.add(receiver);
+
+        // Bolt raceway
+        const racewayGeom = new THREE.CylinderGeometry(0.09, 0.09, 1.3, 16);
+        const raceway = new THREE.Mesh(racewayGeom, new THREE.MeshStandardMaterial({ color: 0x5a6268, metalness: 0.7, roughness: 0.4 }));
+        raceway.rotation.z = Math.PI / 2;
+        raceway.position.set(0, 0.08, 0);
+        group.add(raceway);
+
+        // Trigger housing
+        const housingGeom = new THREE.BoxGeometry(0.2, 0.35, 0.2);
+        const housing = new THREE.Mesh(housingGeom, frameMat);
+        housing.position.set(-0.3, -0.3, 0);
+        group.add(housing);
+
+        // Magazine well
+        const magGeom = new THREE.BoxGeometry(0.15, 0.3, 0.3);
+        const mag = new THREE.Mesh(magGeom, new THREE.MeshStandardMaterial({ color: 0x2c3e50, metalness: 0.6, roughness: 0.5 }));
+        mag.position.set(0.2, -0.35, 0);
+        group.add(mag);
+
+        group.position.set(position.x, position.y, position.z);
+        group.rotation.set(rotation.x, rotation.y, rotation.z);
+        this.mesh = group;
+        this.mesh.userData.component = this;
+        scene.add(group);
     }
 
     highlight(enabled) {
         if (!this.mesh) return;
 
-        if (enabled) {
-            this.mesh.traverse(child => {
-                if (child.isMesh) {
-                    child.material = child.material.clone();
+        this.mesh.traverse(child => {
+            if (child.isMesh) {
+                if (enabled) {
+                    if (!child.userData.originalEmissive) {
+                        child.userData.originalEmissive = child.material.emissive.clone();
+                    }
                     child.material.emissive = new THREE.Color(0x3498db);
-                    child.material.emissiveIntensity = 0.5;
+                    child.material.emissiveIntensity = 0.4;
+                } else {
+                    if (child.userData.originalEmissive) {
+                        child.material.emissive = child.userData.originalEmissive;
+                        child.material.emissiveIntensity = 0;
+                    }
                 }
-            });
-        } else {
-            this.mesh.traverse(child => {
-                if (child.isMesh) {
-                    child.material.emissive = new THREE.Color(0x000000);
-                    child.material.emissiveIntensity = 0;
-                }
-            });
-        }
+            }
+        });
     }
 
     remove() {
@@ -261,97 +533,78 @@ class MechanicalComponent {
     }
 }
 
-// Initialize Three.js scene
+// Initialize Three.js
 function init() {
     const viewport = document.getElementById('viewport');
 
     // Scene
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0a0e14);
-    scene.fog = new THREE.Fog(0x0a0e14, 10, 50);
 
     // Camera
     camera = new THREE.PerspectiveCamera(
-        60,
+        50,
         viewport.clientWidth / viewport.clientHeight,
         0.1,
-        1000
+        100
     );
-    camera.position.set(3, 2, 3);
-    camera.lookAt(0, 0, 0);
+    camera.position.set(2, 1.5, 2);
 
     // Renderer
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(viewport.clientWidth, viewport.clientHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     viewport.appendChild(renderer.domElement);
 
     // Controls
     controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
-    controls.minDistance = 1;
-    controls.maxDistance = 20;
+    controls.target.set(0, 0.3, 0);
+    controls.update();
 
     // Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
 
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(5, 10, 5);
+    directionalLight.position.set(3, 5, 3);
     directionalLight.castShadow = true;
-    directionalLight.shadow.camera.near = 0.1;
-    directionalLight.shadow.camera.far = 50;
-    directionalLight.shadow.camera.left = -5;
-    directionalLight.shadow.camera.right = 5;
-    directionalLight.shadow.camera.top = 5;
-    directionalLight.shadow.camera.bottom = -5;
     scene.add(directionalLight);
 
-    const pointLight = new THREE.PointLight(0x3498db, 0.3);
-    pointLight.position.set(-3, 3, -3);
-    scene.add(pointLight);
+    const pointLight1 = new THREE.PointLight(0x3498db, 0.4);
+    pointLight1.position.set(-2, 2, -2);
+    scene.add(pointLight1);
 
-    // Grid and axes
-    gridHelper = new THREE.GridHelper(10, 20, 0x2d3742, 0x1c2229);
+    const pointLight2 = new THREE.PointLight(0xe74c3c, 0.3);
+    pointLight2.position.set(2, 1, 2);
+    scene.add(pointLight2);
+
+    // Grid
+    const gridHelper = new THREE.GridHelper(5, 20, 0x2d3742, 0x1c2229);
     scene.add(gridHelper);
 
-    axesHelper = new THREE.AxesHelper(2);
-    scene.add(axesHelper);
-
-    // Raycaster for picking
+    // Raycaster
     raycaster = new THREE.Raycaster();
     mouse = new THREE.Vector2();
 
-    // Event listeners
     setupEventListeners();
-
-    // Start animation loop
     animate();
 
-    updateUI();
+    // Load shotgun system by default
+    loadShotgunSystem();
 }
 
 function setupEventListeners() {
-    // Component library
-    document.querySelectorAll('.component-item').forEach(item => {
-        item.addEventListener('click', () => {
-            const type = item.dataset.type;
-            addComponent(type);
-        });
-    });
-
-    // Canvas interactions
     renderer.domElement.addEventListener('click', onCanvasClick);
-    renderer.domElement.addEventListener('mousemove', onMouseMove);
 
-    // Control buttons
-    document.getElementById('cock-hammer').addEventListener('click', cockHammer);
-    document.getElementById('pull-trigger').addEventListener('click', releaseSear);
-    document.getElementById('run-simulation').addEventListener('click', runSimulation);
-    document.getElementById('show-forces').addEventListener('click', toggleForces);
+    document.getElementById('load-shotgun').addEventListener('click', loadShotgunSystem);
+    document.getElementById('load-bolt').addEventListener('click', loadBoltSystem);
+    document.getElementById('cock-system').addEventListener('click', cockSystem);
+    document.getElementById('fire-system').addEventListener('click', fireSystem);
+    document.getElementById('reset-system').addEventListener('click', resetSystem);
+    document.getElementById('clear-all').addEventListener('click', clearAll);
 
     // Camera views
     document.getElementById('view-front').addEventListener('click', () => setCameraView('front'));
@@ -359,371 +612,208 @@ function setupEventListeners() {
     document.getElementById('view-top').addEventListener('click', () => setCameraView('top'));
     document.getElementById('view-iso').addEventListener('click', () => setCameraView('iso'));
 
-    // Utility
-    document.getElementById('clear-workspace').addEventListener('click', clearWorkspace);
-    document.getElementById('reset-states').addEventListener('click', resetSystem);
-    document.getElementById('load-example').addEventListener('click', loadExampleSystem);
-
-    // Keyboard
-    document.addEventListener('keydown', onKeyDown);
-
-    // Resize
     window.addEventListener('resize', onWindowResize);
 }
 
-function addComponent(type) {
-    const position = {
-        x: (Math.random() - 0.5) * 2,
-        y: Math.random() * 2,
-        z: (Math.random() - 0.5) * 2
-    };
+// SYSTEM LOADERS
+function loadShotgunSystem() {
+    clearAll();
+    currentSystem = 'shotgun';
 
-    const component = new MechanicalComponent(type, position);
-    components.push(component);
+    updateStatus('idle', 'Loading single-barrel shotgun system...');
 
-    // Store references to key components
-    if (type === 'hammer' && !hammerComponent) {
-        hammerComponent = component;
-    } else if (type === 'sear' && !searComponent) {
-        searComponent = component;
-    } else if (type === 'spring' && !springComponent) {
-        springComponent = component;
-    } else if (type === 'trigger' && !triggerComponent) {
-        triggerComponent = component;
-    }
+    // Frame
+    const frame = new MechanicalComponent('shotgun-frame', {x: 0, y: 0.2, z: 0}, {x: 0, y: 0, z: 0});
+    components.push(frame);
 
-    updateUI();
-    updateStatus('idle', `Added ${type} component`);
-}
+    // Hammer (pivot at origin, striker points up)
+    const hammer = new MechanicalComponent('shotgun-hammer', {x: 0.2, y: 0.2, z: 0}, {x: 0, y: 0, z: 0});
+    components.push(hammer);
+    SYSTEMS.shotgun = { hammer };
 
-function onCanvasClick(event) {
-    const rect = renderer.domElement.getBoundingClientRect();
-    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    // Sear (below and forward of hammer)
+    const sear = new MechanicalComponent('shotgun-sear', {x: 0.05, y: 0.05, z: 0}, {x: 0, y: 0, z: 0});
+    components.push(sear);
+    SYSTEMS.shotgun.sear = sear;
 
-    raycaster.setFromCamera(mouse, camera);
+    // Hammer spring (between frame and hammer)
+    const spring = new MechanicalComponent('shotgun-spring', {x: 0.2, y: -0.15, z: 0}, {x: 0, y: 0, z: 0});
+    components.push(spring);
+    SYSTEMS.shotgun.spring = spring;
 
-    const meshes = components.map(c => c.mesh).filter(m => m);
-    const intersects = raycaster.intersectObjects(meshes, true);
+    // Trigger (below sear)
+    const trigger = new MechanicalComponent('shotgun-trigger', {x: -0.1, y: -0.15, z: 0}, {x: 0, y: 0, z: 0});
+    components.push(trigger);
+    SYSTEMS.shotgun.trigger = trigger;
 
-    if (selectedComponent) {
-        selectedComponent.highlight(false);
-        selectedComponent = null;
-    }
-
-    if (intersects.length > 0) {
-        const clickedMesh = intersects[0].object;
-
-        // Find which component was clicked
-        for (let comp of components) {
-            if (comp.mesh === clickedMesh || comp.mesh.children.includes(clickedMesh) || clickedMesh.parent === comp.mesh) {
-                selectedComponent = comp;
-                comp.highlight(true);
-                updateSelectedComponentInfo(comp);
-                break;
-            }
-        }
-    } else {
-        document.getElementById('selected-component').textContent = 'None';
-        document.getElementById('prop-pos').textContent = '-';
-        document.getElementById('prop-rot').textContent = '-';
-        document.getElementById('prop-mass').textContent = '-';
-    }
-}
-
-function onMouseMove(event) {
-    const rect = renderer.domElement.getBoundingClientRect();
-    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-}
-
-function onKeyDown(event) {
-    if (event.key === 'Delete' && selectedComponent) {
-        removeComponent(selectedComponent);
-    }
-}
-
-function removeComponent(component) {
-    component.remove();
-    components = components.filter(c => c !== component);
-
-    if (component === hammerComponent) hammerComponent = null;
-    if (component === searComponent) searComponent = null;
-    if (component === springComponent) springComponent = null;
-    if (component === triggerComponent) triggerComponent = null;
-
-    selectedComponent = null;
+    updateStatus('idle', 'Single-barrel shotgun loaded');
     updateUI();
 }
 
-function updateSelectedComponentInfo(comp) {
-    document.getElementById('selected-component').textContent = comp.type.toUpperCase();
-    document.getElementById('prop-pos').textContent =
-        `${comp.mesh.position.x.toFixed(2)}, ${comp.mesh.position.y.toFixed(2)}, ${comp.mesh.position.z.toFixed(2)}`;
-    document.getElementById('prop-rot').textContent =
-        `${(comp.mesh.rotation.x * 180 / Math.PI).toFixed(1)}°, ${(comp.mesh.rotation.y * 180 / Math.PI).toFixed(1)}°, ${(comp.mesh.rotation.z * 180 / Math.PI).toFixed(1)}°`;
-    document.getElementById('prop-mass').textContent = `${(comp.mass * 1000).toFixed(1)} g`;
+function loadBoltSystem() {
+    clearAll();
+    currentSystem = 'bolt';
+
+    updateStatus('idle', 'Loading straight-pull bolt system...');
+
+    // Frame
+    const frame = new MechanicalComponent('bolt-frame', {x: 0, y: 0.2, z: 0}, {x: 0, y: 0, z: 0});
+    components.push(frame);
+
+    // Bolt body
+    const bolt = new MechanicalComponent('bolt-body', {x: 0, y: 0.28, z: 0}, {x: 0, y: 0, z: 0});
+    components.push(bolt);
+    SYSTEMS.straightPull = { bolt };
+
+    // Striker (inside bolt)
+    const hammer = new MechanicalComponent('bolt-hammer', {x: -0.1, y: 0.28, z: 0}, {x: 0, y: 0, z: 0});
+    components.push(hammer);
+    SYSTEMS.straightPull.hammer = hammer;
+
+    // Striker spring
+    const spring = new MechanicalComponent('bolt-spring', {x: -0.35, y: 0.28, z: 0}, {x: 0, y: 0, z: 0});
+    components.push(spring);
+    SYSTEMS.straightPull.spring = spring;
+
+    // Sear
+    const sear = new MechanicalComponent('bolt-sear', {x: -0.25, y: 0.15, z: 0}, {x: 0, y: 0, z: 0});
+    components.push(sear);
+    SYSTEMS.straightPull.sear = sear;
+
+    // Trigger
+    const trigger = new MechanicalComponent('bolt-trigger', {x: -0.3, y: -0.05, z: 0}, {x: 0, y: 0, z: 0});
+    components.push(trigger);
+    SYSTEMS.straightPull.trigger = trigger;
+
+    updateStatus('idle', 'Straight-pull bolt loaded');
+    updateUI();
 }
 
-// Mechanical Actions
-function cockHammer() {
-    if (!hammerComponent) {
-        updateStatus('error', 'No hammer component found');
+// MECHANICAL ACTIONS
+function cockSystem() {
+    if (currentSystem === 'shotgun') {
+        cockShotgun();
+    } else if (currentSystem === 'bolt') {
+        cockBolt();
+    }
+}
+
+function cockShotgun() {
+    const sys = SYSTEMS.shotgun;
+    if (!sys || !sys.hammer) {
+        updateStatus('error', 'No hammer found');
         return;
     }
 
     updateStatus('active', 'Cocking hammer...');
 
-    // Animate hammer rotation
-    const targetRotation = -Math.PI / 3; // 60 degrees back
-    animateRotation(hammerComponent.mesh, targetRotation, 'z', 800);
+    // Rotate hammer back 70 degrees
+    animateRotation(sys.hammer.mesh, -Math.PI * 0.39, 'z', 800, () => {
+        sys.hammer.state = 'cocked';
+        updateStatus('idle', 'Hammer cocked');
+        updateForceDisplay(45, 0, 0, 60);
+    });
+}
 
-    hammerComponent.state = 'cocked';
-    document.getElementById('hammer-state').textContent = 'cocked';
-
-    // Calculate spring compression
-    if (springComponent) {
-        const compression = Math.abs(targetRotation) * 50; // Abstract calculation
-        updateStressBar('spring-stress', compression);
-        updateForceValue('spring-force', PHYSICS_CONFIG.springConstant * 0.1);
-        springComponent.state = 'compressed';
-        document.getElementById('spring-state').textContent = 'compressed';
+function cockBolt() {
+    const sys = SYSTEMS.straightPull;
+    if (!sys || !sys.hammer) {
+        updateStatus('error', 'No striker found');
+        return;
     }
 
-    // Check sear engagement
-    if (searComponent) {
-        setTimeout(() => {
-            searComponent.state = 'engaged';
-            document.getElementById('sear-state').textContent = 'engaged';
-            updateStressBar('sear-stress', 75);
-            updateStatus('idle', 'Hammer cocked and engaged');
-        }, 850);
+    updateStatus('active', 'Cocking striker...');
+
+    // Pull striker back
+    animatePosition(sys.hammer.mesh, -0.25, 'x', 600, () => {
+        sys.hammer.state = 'cocked';
+        updateStatus('idle', 'Striker cocked');
+        updateForceDisplay(55, 0, 0, 70);
+    });
+}
+
+function fireSystem() {
+    if (currentSystem === 'shotgun') {
+        fireShotgun();
+    } else if (currentSystem === 'bolt') {
+        fireBolt();
     }
 }
 
-function releaseSear() {
-    if (!hammerComponent || hammerComponent.state !== 'cocked') {
+function fireShotgun() {
+    const sys = SYSTEMS.shotgun;
+    if (!sys || sys.hammer.state !== 'cocked') {
         updateStatus('error', 'Hammer not cocked');
         return;
     }
 
-    if (!searComponent || searComponent.state !== 'engaged') {
-        updateStatus('error', 'Sear not engaged');
+    updateStatus('active', 'Releasing hammer...');
+
+    // Hammer falls forward
+    animateRotation(sys.hammer.mesh, 0, 'z', 250, () => {
+        sys.hammer.state = 'fired';
+        updateStatus('idle', 'Hammer fired');
+        updateForceDisplay(0, 8.2, 1.68, 0);
+
+        setTimeout(() => {
+            updateForceDisplay(0, 0, 0, 0);
+        }, 1500);
+    });
+}
+
+function fireBolt() {
+    const sys = SYSTEMS.straightPull;
+    if (!sys || sys.hammer.state !== 'cocked') {
+        updateStatus('error', 'Striker not cocked');
         return;
     }
 
-    updateStatus('active', 'Releasing sear...');
+    updateStatus('active', 'Releasing striker...');
 
-    // Disengage sear
-    animateRotation(searComponent.mesh, -Math.PI / 8, 'z', 200);
-    searComponent.state = 'disengaged';
-    document.getElementById('sear-state').textContent = 'disengaged';
-    updateStressBar('sear-stress', 0);
+    // Striker moves forward
+    animatePosition(sys.hammer.mesh, -0.1, 'x', 180, () => {
+        sys.hammer.state = 'fired';
+        updateStatus('idle', 'Striker released');
+        updateForceDisplay(0, 12.5, 3.91, 0);
 
-    // Release hammer
-    setTimeout(() => {
-        hammerComponent.state = 'falling';
-        document.getElementById('hammer-state').textContent = 'falling';
-
-        // Calculate impact physics
-        const springEnergy = 0.5 * PHYSICS_CONFIG.springConstant * Math.pow(0.1, 2);
-        const velocity = Math.sqrt(2 * springEnergy / hammerComponent.mass);
-        const impactEnergy = 0.5 * hammerComponent.mass * Math.pow(velocity, 2);
-
-        updateForceValue('hammer-velocity', velocity);
-        updateForceValue('impact-energy', impactEnergy);
-        updateForceValue('contact-force', impactEnergy * 10);
-
-        // Animate hammer fall
-        animateRotation(hammerComponent.mesh, 0, 'z', 300, () => {
-            hammerComponent.state = 'at_rest';
-            document.getElementById('hammer-state').textContent = 'fired';
-            updateStatus('idle', 'Hammer released');
-
-            // Reset spring
-            if (springComponent) {
-                springComponent.state = 'relaxed';
-                document.getElementById('spring-state').textContent = 'relaxed';
-                updateStressBar('spring-stress', 0);
-                updateForceValue('spring-force', 0);
-            }
-        });
-    }, 250);
-}
-
-function runSimulation() {
-    updateStatus('active', 'Running physics simulation...');
-    document.getElementById('physics-status').textContent = 'Physics: Running';
-    physicsEnabled = true;
-
-    // Run failure analysis
-    setTimeout(() => {
-        analyzeFailurePoints();
-        physicsEnabled = false;
-        document.getElementById('physics-status').textContent = 'Physics: Complete';
-        updateStatus('idle', 'Simulation complete');
-    }, 2000);
-}
-
-function analyzeFailurePoints() {
-    const failures = [];
-
-    if (hammerComponent && hammerComponent.state === 'cocked') {
-        const stress = Math.abs(hammerComponent.mesh.rotation.z) * 100;
-        if (stress > 50) {
-            failures.push({
-                component: 'Hammer',
-                reason: 'Excessive rotation stress on pivot',
-                severity: stress > 80 ? 'CRITICAL' : 'HIGH'
-            });
-        }
-    }
-
-    if (searComponent && searComponent.state === 'engaged') {
-        failures.push({
-            component: 'Sear',
-            reason: 'High contact pressure at engagement surface',
-            severity: 'MEDIUM'
-        });
-    }
-
-    if (springComponent && springComponent.state === 'compressed') {
-        failures.push({
-            component: 'Spring',
-            reason: 'Material fatigue from repeated compression',
-            severity: 'LOW'
-        });
-    }
-
-    if (!hammerComponent || !searComponent) {
-        failures.push({
-            component: 'System',
-            reason: 'Missing critical components for operation',
-            severity: 'CRITICAL'
-        });
-    }
-
-    displayFailurePoints(failures);
-}
-
-function displayFailurePoints(failures) {
-    const container = document.querySelector('.failure-list');
-
-    if (failures.length === 0) {
-        container.innerHTML = '<em style="color: #2ecc71;">No critical failures detected</em>';
-        return;
-    }
-
-    container.innerHTML = failures.map(f => `
-        <div style="margin-bottom: 10px; padding: 10px; background: var(--bg-primary); border-radius: 4px; border-left: 3px solid ${
-            f.severity === 'CRITICAL' ? '#e74c3c' : f.severity === 'HIGH' ? '#f39c12' : f.severity === 'MEDIUM' ? '#3498db' : '#2ecc71'
-        };">
-            <div style="font-weight: 700; color: ${
-                f.severity === 'CRITICAL' ? '#e74c3c' : f.severity === 'HIGH' ? '#f39c12' : f.severity === 'MEDIUM' ? '#3498db' : '#2ecc71'
-            }; margin-bottom: 4px;">${f.severity}</div>
-            <div style="font-size: 0.9em; font-weight: 600;">${f.component}</div>
-            <div style="font-size: 0.85em; color: var(--text-secondary); margin-top: 4px;">${f.reason}</div>
-        </div>
-    `).join('');
-}
-
-function toggleForces() {
-    showForces = !showForces;
-    const btn = document.getElementById('show-forces');
-    btn.textContent = showForces ? 'Hide Forces' : 'Show Forces';
-
-    if (showForces) {
-        // Add force vector visualizations
-        updateStatus('idle', 'Force vectors enabled');
-    } else {
-        updateStatus('idle', 'Force vectors disabled');
-    }
-}
-
-function setCameraView(view) {
-    const distance = 3;
-
-    switch(view) {
-        case 'front':
-            camera.position.set(0, 1, distance);
-            break;
-        case 'side':
-            camera.position.set(distance, 1, 0);
-            break;
-        case 'top':
-            camera.position.set(0, distance, 0);
-            break;
-        case 'iso':
-            camera.position.set(distance, distance * 0.7, distance);
-            break;
-    }
-
-    camera.lookAt(0, 0, 0);
-    controls.target.set(0, 0, 0);
-    controls.update();
-}
-
-function clearWorkspace() {
-    if (confirm('Clear all components?')) {
-        components.forEach(c => c.remove());
-        components = [];
-        hammerComponent = null;
-        searComponent = null;
-        springComponent = null;
-        triggerComponent = null;
-        selectedComponent = null;
-        updateUI();
-        resetForces();
-        updateStatus('idle', 'Workspace cleared');
-    }
+        setTimeout(() => {
+            updateForceDisplay(0, 0, 0, 0);
+        }, 1500);
+    });
 }
 
 function resetSystem() {
     components.forEach(comp => {
-        comp.state = 'at_rest';
         if (comp.mesh) {
-            comp.mesh.rotation.set(0, 0, 0);
+            comp.mesh.rotation.set(
+                comp.originalRotation.x,
+                comp.originalRotation.y,
+                comp.originalRotation.z
+            );
+            // Reset position if it was animated
+            if (currentSystem === 'bolt' && comp.type === 'bolt-hammer') {
+                comp.mesh.position.x = -0.1;
+            }
         }
+        comp.state = 'at_rest';
     });
 
-    document.getElementById('hammer-state').textContent = 'at_rest';
-    document.getElementById('sear-state').textContent = 'disengaged';
-    document.getElementById('spring-state').textContent = 'relaxed';
-
-    resetForces();
     updateStatus('idle', 'System reset');
+    updateForceDisplay(0, 0, 0, 0);
 }
 
-function loadExampleSystem() {
-    clearWorkspace();
-
-    // Create example hammer system
-    hammerComponent = new MechanicalComponent('hammer', {x: 0, y: 0.5, z: 0});
-    components.push(hammerComponent);
-
-    searComponent = new MechanicalComponent('sear', {x: -0.5, y: 0.2, z: 0});
-    components.push(searComponent);
-
-    springComponent = new MechanicalComponent('spring', {x: -0.3, y: 0.7, z: 0});
-    components.push(springComponent);
-
-    triggerComponent = new MechanicalComponent('trigger', {x: -0.6, y: -0.3, z: 0});
-    components.push(triggerComponent);
-
-    const pin1 = new MechanicalComponent('pin', {x: 0, y: 0.5, z: 0});
-    components.push(pin1);
-
-    const pin2 = new MechanicalComponent('pin', {x: -0.5, y: 0.2, z: 0});
-    components.push(pin2);
-
-    const block = new MechanicalComponent('block', {x: 0, y: -0.3, z: 0});
-    components.push(block);
-
+function clearAll() {
+    components.forEach(c => c.remove());
+    components = [];
+    currentSystem = null;
+    SYSTEMS.shotgun = null;
+    SYSTEMS.straightPull = null;
+    selectedComponent = null;
     updateUI();
-    updateStatus('idle', 'Example system loaded');
+    updateForceDisplay(0, 0, 0, 0);
 }
 
-// Utility Functions
+// Animation helpers
 function animateRotation(mesh, targetAngle, axis, duration, callback) {
     const startAngle = mesh.rotation[axis];
     const startTime = Date.now();
@@ -745,47 +835,45 @@ function animateRotation(mesh, targetAngle, axis, duration, callback) {
     step();
 }
 
+function animatePosition(mesh, targetPos, axis, duration, callback) {
+    const startPos = mesh.position[axis];
+    const startTime = Date.now();
+
+    function step() {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = easeOutCubic(progress);
+
+        mesh.position[axis] = startPos + (targetPos - startPos) * eased;
+
+        if (progress < 1) {
+            requestAnimationFrame(step);
+        } else if (callback) {
+            callback();
+        }
+    }
+
+    step();
+}
+
 function easeOutCubic(t) {
     return 1 - Math.pow(1 - t, 3);
 }
 
-function updateStressBar(id, value) {
-    const bar = document.getElementById(id);
-    const valueDisplay = bar.parentElement.nextElementSibling;
+// UI Updates
+function updateForceDisplay(springForce, velocity, energy, stress) {
+    document.getElementById('spring-force').textContent = `${springForce.toFixed(1)} N`;
+    document.getElementById('hammer-velocity').textContent = `${velocity.toFixed(2)} m/s`;
+    document.getElementById('impact-energy').textContent = `${energy.toFixed(2)} J`;
 
-    if (bar) {
-        bar.style.width = `${Math.min(value, 100)}%`;
-        valueDisplay.textContent = `${Math.round(value)}%`;
-    }
-}
-
-function updateForceValue(id, value) {
-    const element = document.getElementById(id);
-    if (!element) return;
-
-    if (id === 'spring-force' || id === 'contact-force') {
-        element.textContent = `${value.toFixed(1)} N`;
-    } else if (id === 'hammer-velocity') {
-        element.textContent = `${value.toFixed(2)} m/s`;
-    } else if (id === 'impact-energy') {
-        element.textContent = `${value.toFixed(3)} J`;
-    }
-}
-
-function resetForces() {
-    updateForceValue('spring-force', 0);
-    updateForceValue('hammer-velocity', 0);
-    updateForceValue('impact-energy', 0);
-    updateForceValue('contact-force', 0);
-
-    updateStressBar('spring-stress', 0);
-    updateStressBar('sear-stress', 0);
-    updateStressBar('pin-stress', 0);
-    updateStressBar('frame-stress', 0);
+    const springBar = document.getElementById('spring-stress');
+    springBar.style.width = `${Math.min(stress, 100)}%`;
+    springBar.parentElement.nextElementSibling.textContent = `${Math.round(stress)}%`;
 }
 
 function updateUI() {
     document.getElementById('component-count').textContent = `Components: ${components.length}`;
+    document.getElementById('system-type').textContent = `System: ${currentSystem || 'None'}`;
 }
 
 function updateStatus(type, message) {
@@ -797,6 +885,61 @@ function updateStatus(type, message) {
     textEl.textContent = message;
 }
 
+function onCanvasClick(event) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+
+    const meshes = components.map(c => c.mesh).filter(m => m);
+    const intersects = raycaster.intersectObjects(meshes, true);
+
+    if (selectedComponent) {
+        selectedComponent.highlight(false);
+        selectedComponent = null;
+    }
+
+    if (intersects.length > 0) {
+        let clickedMesh = intersects[0].object;
+
+        // Traverse up to find the component
+        while (clickedMesh && !clickedMesh.userData.component) {
+            clickedMesh = clickedMesh.parent;
+        }
+
+        if (clickedMesh && clickedMesh.userData.component) {
+            selectedComponent = clickedMesh.userData.component;
+            selectedComponent.highlight(true);
+            document.getElementById('selected-component').textContent = selectedComponent.type.toUpperCase();
+        }
+    } else {
+        document.getElementById('selected-component').textContent = 'None';
+    }
+}
+
+function setCameraView(view) {
+    const distance = 2.5;
+
+    switch(view) {
+        case 'front':
+            camera.position.set(0, 0.3, distance);
+            break;
+        case 'side':
+            camera.position.set(distance, 0.3, 0);
+            break;
+        case 'top':
+            camera.position.set(0, distance, 0);
+            break;
+        case 'iso':
+            camera.position.set(distance, distance * 0.7, distance);
+            break;
+    }
+
+    controls.target.set(0, 0.3, 0);
+    controls.update();
+}
+
 function onWindowResize() {
     const viewport = document.getElementById('viewport');
     camera.aspect = viewport.clientWidth / viewport.clientHeight;
@@ -806,16 +949,9 @@ function onWindowResize() {
 
 function animate() {
     requestAnimationFrame(animate);
-
     controls.update();
-
-    // Physics update
-    if (physicsEnabled) {
-        // Update physics simulation
-    }
-
     renderer.render(scene, camera);
 }
 
-// Start when page loads
+// Start
 window.addEventListener('DOMContentLoaded', init);
