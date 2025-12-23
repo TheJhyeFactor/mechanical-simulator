@@ -623,29 +623,33 @@ function loadShotgunSystem() {
 
     updateStatus('idle', 'Loading single-barrel shotgun system...');
 
-    // Frame/receiver - centered at origin
+    // Build from bottom up for proper assembly
+
+    // 1. Frame/receiver - base of everything
     const frame = new MechanicalComponent('shotgun-frame', {x: 0, y: 0, z: 0}, {x: 0, y: 0, z: 0});
     components.push(frame);
 
-    // Hammer - pivot point at (0.2, 0.1, 0) inside receiver
-    const hammer = new MechanicalComponent('shotgun-hammer', {x: 0.2, y: 0.1, z: 0}, {x: 0, y: 0, z: 0});
-    components.push(hammer);
-    SYSTEMS.shotgun = { hammer };
+    // 2. Trigger - in trigger guard at bottom of frame (frame is 0.5 tall, so trigger at -0.25)
+    const trigger = new MechanicalComponent('shotgun-trigger', {x: -0.2, y: -0.13, z: 0}, {x: 0, y: 0, z: 0});
+    components.push(trigger);
+    SYSTEMS.shotgun = { trigger };
 
-    // Hammer spring - DIRECTLY UNDER hammer, vertical orientation
-    const spring = new MechanicalComponent('shotgun-spring', {x: 0.2, y: -0.1, z: 0}, {x: 0, y: 0, z: 0});
-    components.push(spring);
-    SYSTEMS.shotgun.spring = spring;
-
-    // Sear - positioned to catch hammer notch
-    const sear = new MechanicalComponent('shotgun-sear', {x: 0.1, y: -0.05, z: 0}, {x: 0, y: 0, z: 0});
+    // 3. Sear - sits above trigger, pivot at frame level (y: 0)
+    const sear = new MechanicalComponent('shotgun-sear', {x: 0.1, y: 0, z: 0}, {x: 0, y: 0, z: 0});
     components.push(sear);
     SYSTEMS.shotgun.sear = sear;
 
-    // Trigger - below sear, inside trigger guard
-    const trigger = new MechanicalComponent('shotgun-trigger', {x: -0.2, y: -0.25, z: 0}, {x: 0, y: 0, z: 0});
-    components.push(trigger);
-    SYSTEMS.shotgun.trigger = trigger;
+    // 4. Hammer - pivot at (0.2, 0.1, 0), hammer body extends upward
+    // Hammer pivot hole is at y=0 in the mesh, body extends from -0.05 to 0.65
+    const hammer = new MechanicalComponent('shotgun-hammer', {x: 0.2, y: 0.1, z: 0}, {x: 0, y: 0, z: 0});
+    components.push(hammer);
+    SYSTEMS.shotgun.hammer = hammer;
+
+    // 5. Spring - sits BETWEEN hammer bottom (at y: 0.05) and frame bottom (at y: -0.25)
+    // Spring is 0.4 tall, so position it at y: -0.05 to connect hammer base to frame
+    const spring = new MechanicalComponent('shotgun-spring', {x: 0.2, y: -0.05, z: 0}, {x: 0, y: 0, z: 0});
+    components.push(spring);
+    SYSTEMS.shotgun.spring = spring;
 
     updateStatus('idle', 'Single-barrel shotgun loaded - Assembled');
     updateUI();
@@ -657,34 +661,40 @@ function loadBoltSystem() {
 
     updateStatus('idle', 'Loading straight-pull bolt system...');
 
-    // Receiver/frame - centered
+    // Build bolt action system properly assembled
+
+    // 1. Receiver/frame - base, centered
+    // Frame is 1.5 long, 0.4 tall, receiver body at y=0
     const frame = new MechanicalComponent('bolt-frame', {x: 0, y: 0, z: 0}, {x: 0, y: 0, z: 0});
     components.push(frame);
 
-    // Bolt body - in the bolt raceway
-    const bolt = new MechanicalComponent('bolt-body', {x: 0, y: 0.08, z: 0}, {x: 0, y: 0, z: 0});
-    components.push(bolt);
-    SYSTEMS.straightPull = { bolt };
+    // 2. Trigger - in trigger housing at (-0.3, -0.3, 0)
+    const trigger = new MechanicalComponent('bolt-trigger', {x: -0.3, y: -0.18, z: 0}, {x: 0, y: 0, z: 0});
+    components.push(trigger);
+    SYSTEMS.straightPull = { trigger };
 
-    // Striker - INSIDE bolt body, aligned
-    const hammer = new MechanicalComponent('bolt-hammer', {x: -0.1, y: 0.08, z: 0}, {x: 0, y: 0, z: 0});
-    components.push(hammer);
-    SYSTEMS.straightPull.hammer = hammer;
-
-    // Striker spring - BEHIND striker, horizontal orientation
-    const spring = new MechanicalComponent('bolt-spring', {x: -0.35, y: 0.08, z: 0}, {x: 0, y: 0, z: 0});
-    components.push(spring);
-    SYSTEMS.straightPull.spring = spring;
-
-    // Sear - positioned to catch striker notch from below
-    const sear = new MechanicalComponent('bolt-sear', {x: -0.25, y: -0.05, z: 0}, {x: 0, y: 0, z: 0});
+    // 3. Sear - catches striker from below, positioned in receiver
+    const sear = new MechanicalComponent('bolt-sear', {x: -0.25, y: 0, z: 0}, {x: 0, y: 0, z: 0});
     components.push(sear);
     SYSTEMS.straightPull.sear = sear;
 
-    // Trigger - in trigger housing
-    const trigger = new MechanicalComponent('bolt-trigger', {x: -0.3, y: -0.15, z: 0}, {x: 0, y: 0, z: 0});
-    components.push(trigger);
-    SYSTEMS.straightPull.trigger = trigger;
+    // 4. Bolt body - in raceway at y: 0.08 (slightly above receiver centerline)
+    // Bolt is 1.2 long, centered at x: 0
+    const bolt = new MechanicalComponent('bolt-body', {x: 0, y: 0.08, z: 0}, {x: 0, y: 0, z: 0});
+    components.push(bolt);
+    SYSTEMS.straightPull.bolt = bolt;
+
+    // 5. Striker - INSIDE bolt, striker is 0.6 long
+    // Position at x: -0.15 so it's inside the bolt body, aligned at y: 0.08
+    const hammer = new MechanicalComponent('bolt-hammer', {x: -0.15, y: 0.08, z: 0}, {x: 0, y: 0, z: 0});
+    components.push(hammer);
+    SYSTEMS.straightPull.hammer = hammer;
+
+    // 6. Spring - BETWEEN striker rear (-0.45) and bolt rear (-0.6)
+    // Spring is 0.5 long horizontally, position at x: -0.45 so it connects
+    const spring = new MechanicalComponent('bolt-spring', {x: -0.45, y: 0.08, z: 0}, {x: 0, y: 0, z: 0});
+    components.push(spring);
+    SYSTEMS.straightPull.spring = spring;
 
     updateStatus('idle', 'Straight-pull bolt loaded - Assembled');
     updateUI();
@@ -725,17 +735,15 @@ function cockBolt() {
 
     updateStatus('active', 'Cocking striker...');
 
-    // Pull striker back (and spring compresses with it)
+    // Pull striker back to x: -0.35
     animatePosition(sys.hammer.mesh, -0.35, 'x', 600, () => {
         sys.hammer.state = 'cocked';
         updateStatus('idle', 'Striker cocked');
         updateForceDisplay(55, 0, 0, 70);
     });
 
-    // Compress spring visually
-    if (sys.spring) {
-        animatePosition(sys.spring.mesh, -0.5, 'x', 600);
-    }
+    // Spring stays in place but visually appears compressed (striker pulls away from it)
+    // In reality the spring would compress, but we'll show it staying put for clarity
 }
 
 function fireSystem() {
@@ -776,8 +784,8 @@ function fireBolt() {
 
     updateStatus('active', 'Releasing striker...');
 
-    // Striker moves forward
-    animatePosition(sys.hammer.mesh, -0.1, 'x', 180, () => {
+    // Striker moves forward to rest position
+    animatePosition(sys.hammer.mesh, -0.15, 'x', 180, () => {
         sys.hammer.state = 'fired';
         updateStatus('idle', 'Striker released');
         updateForceDisplay(0, 12.5, 3.91, 0);
@@ -797,14 +805,11 @@ function resetSystem() {
             sys.hammer.state = 'at_rest';
         }
     } else if (currentSystem === 'bolt') {
-        // Reset bolt striker and spring positions
+        // Reset bolt striker to rest position
         const sys = SYSTEMS.straightPull;
         if (sys && sys.hammer) {
-            sys.hammer.mesh.position.x = -0.1;
+            sys.hammer.mesh.position.x = -0.15;
             sys.hammer.state = 'at_rest';
-        }
-        if (sys && sys.spring) {
-            sys.spring.mesh.position.x = -0.35;
         }
     }
 
