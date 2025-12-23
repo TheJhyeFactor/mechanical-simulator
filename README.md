@@ -1,40 +1,48 @@
-# Mechanical Interaction Simulator
+# 3D Mechanical System Designer
 
-An interactive educational tool for visualizing state-based mechanical systems, constraint solving, and component interactions.
+An interactive educational tool for visualizing and testing mechanical assemblies with realistic 3D models and physics simulations.
 
 ## Overview
 
-This project is a **conceptual interaction simulator** that demonstrates:
-- State machine logic
-- Constraint satisfaction problems
-- Component engagement rules
-- Visual debugging of mechanical states
-- Stress analysis and failure point detection
+This project is a **3D mechanical design simulator** featuring two complete working systems:
 
-## Educational Purpose
+### 1. Single-Barrel Shotgun Hammer System
+- External hammer with L-shaped body
+- Sear engagement mechanism
+- Compression hammer spring
+- Trigger linkage
+- Receiver frame with trigger guard
+- **Operation:** Cock hammer (70° rotation) → Fire (hammer falls forward)
 
-Learn about:
-- Boolean logic and state transitions
-- Constraint-based systems (similar to CAD software)
-- Physics simulation principles
-- Engineering problem-solving
-- System stability analysis
+### 2. Straight-Pull Bolt Action System
+- Bolt body with handle and extractor
+- Internal striker (firing pin)
+- Sear catch mechanism
+- Trigger bar connection
+- Striker spring
+- Full receiver with bolt raceway
+- **Operation:** Pull bolt to cock striker → Fire (striker releases forward)
 
 ## Features
 
-- **Interactive Component Manipulation** - Drag and position mechanical elements
-- **Real-time State Visualization** - See state changes as they happen
-- **Constraint Solver** - Automatic detection of valid/invalid configurations
-- **Stress Analysis** - Identify points of failure and load distribution
-- **Visual Feedback** - Clear indicators for engagement, blocking, and release states
+- **Full 3D Rendering** - Three.js-powered realistic visualization
+- **Two Complete Systems** - Switch between shotgun and bolt action
+- **Working Mechanics** - Cock and fire with realistic animations
+- **Physics Calculations** - Spring force, velocity, impact energy
+- **Stress Analysis** - Live stress bars and failure point detection
+- **Camera Controls** - Orbit, pan, zoom, multiple view presets
+- **Component Selection** - Click parts to inspect properties
+- **Educational Disclaimer** - Clear abstract modeling notice
 
 ## Technical Implementation
 
 Built with:
-- Vanilla JavaScript for state machine logic
-- HTML5 Canvas for visualization
-- CSS3 for modern UI
-- No external dependencies
+- Three.js for 3D rendering
+- PBR materials (metalness, roughness)
+- Realistic geometries for each component
+- Smooth animation system
+- Real-time physics calculations
+- No backend required - runs entirely client-side
 
 ---
 
