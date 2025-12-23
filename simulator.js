@@ -720,12 +720,20 @@ function cockShotgun() {
 
     updateStatus('active', 'Cocking hammer...');
 
-    // Rotate hammer back 70 degrees
+    // 1. Rotate hammer back 70 degrees
     animateRotation(sys.hammer.mesh, -Math.PI * 0.39, 'z', 800, () => {
         sys.hammer.state = 'cocked';
-        updateStatus('idle', 'Hammer cocked');
-        updateForceDisplay(45, 0, 0, 60);
+
+        // 2. Sear engages hammer notch
+        animateRotation(sys.sear.mesh, Math.PI * 0.08, 'z', 200, () => {
+            sys.sear.state = 'engaged';
+            updateStatus('idle', 'Hammer cocked - Sear engaged');
+            updateForceDisplay(45, 0, 0, 60);
+        });
     });
+
+    // Compress spring as hammer rotates back
+    animateScale(sys.spring.mesh, 0.65, 'y', 800);
 }
 
 function cockBolt() {
@@ -737,16 +745,20 @@ function cockBolt() {
 
     updateStatus('active', 'Cocking striker...');
 
-    // Pull striker back to x: -0.3 (from rest position x: 0.25)
-    // This compresses the spring between bolt rear and striker
+    // 1. Pull striker back to x: -0.3 (from rest position x: 0.25)
     animatePosition(sys.hammer.mesh, -0.3, 'x', 600, () => {
         sys.hammer.state = 'cocked';
-        updateStatus('idle', 'Striker cocked');
-        updateForceDisplay(55, 0, 0, 70);
+
+        // 2. Sear engages striker notch
+        animateRotation(sys.sear.mesh, Math.PI * 0.1, 'z', 150, () => {
+            sys.sear.state = 'engaged';
+            updateStatus('idle', 'Striker cocked - Sear engaged');
+            updateForceDisplay(55, 0, 0, 70);
+        });
     });
 
-    // Spring stays in place but visually appears compressed (striker pulls away from it)
-    // In reality the spring would compress, but we'll show it staying put for clarity
+    // Compress spring as striker pulls back
+    animateScale(sys.spring.mesh, 0.55, 'x', 600);
 }
 
 function fireSystem() {
@@ -764,17 +776,31 @@ function fireShotgun() {
         return;
     }
 
-    updateStatus('active', 'Releasing hammer...');
+    updateStatus('active', 'Pulling trigger...');
 
-    // Hammer falls forward
-    animateRotation(sys.hammer.mesh, 0, 'z', 250, () => {
-        sys.hammer.state = 'fired';
-        updateStatus('idle', 'Hammer fired');
-        updateForceDisplay(0, 8.2, 1.68, 0);
+    // 1. Trigger rotates back
+    animateRotation(sys.trigger.mesh, Math.PI * 0.12, 'z', 150, () => {
+        updateStatus('active', 'Releasing sear...');
 
-        setTimeout(() => {
-            updateForceDisplay(0, 0, 0, 0);
-        }, 1500);
+        // 2. Sear rotates down, releasing hammer
+        animateRotation(sys.sear.mesh, -Math.PI * 0.15, 'z', 100, () => {
+            sys.sear.state = 'disengaged';
+            updateStatus('active', 'Hammer falling...');
+
+            // 3. Hammer falls forward (spring pushes it)
+            animateRotation(sys.hammer.mesh, 0, 'z', 250, () => {
+                sys.hammer.state = 'fired';
+                updateStatus('idle', 'Strike!');
+                updateForceDisplay(0, 8.2, 1.68, 0);
+
+                setTimeout(() => {
+                    updateForceDisplay(0, 0, 0, 0);
+                }, 1500);
+            });
+
+            // Spring expands as hammer falls
+            animateScale(sys.spring.mesh, 1.0, 'y', 250);
+        });
     });
 }
 
@@ -785,34 +811,68 @@ function fireBolt() {
         return;
     }
 
-    updateStatus('active', 'Releasing striker...');
+    updateStatus('active', 'Pulling trigger...');
 
-    // Striker moves forward to rest position x: 0.25
-    animatePosition(sys.hammer.mesh, 0.25, 'x', 180, () => {
-        sys.hammer.state = 'fired';
-        updateStatus('idle', 'Striker released');
-        updateForceDisplay(0, 12.5, 3.91, 0);
+    // 1. Trigger rotates back
+    animateRotation(sys.trigger.mesh, Math.PI * 0.15, 'z', 120, () => {
+        updateStatus('active', 'Releasing sear...');
 
-        setTimeout(() => {
-            updateForceDisplay(0, 0, 0, 0);
-        }, 1500);
+        // 2. Sear rotates down, releasing striker
+        animateRotation(sys.sear.mesh, -Math.PI * 0.18, 'z', 80, () => {
+            sys.sear.state = 'disengaged';
+            updateStatus('active', 'Striker releasing...');
+
+            // 3. Striker moves forward (spring pushes it)
+            animatePosition(sys.hammer.mesh, 0.25, 'x', 180, () => {
+                sys.hammer.state = 'fired';
+                updateStatus('idle', 'Strike!');
+                updateForceDisplay(0, 12.5, 3.91, 0);
+
+                setTimeout(() => {
+                    updateForceDisplay(0, 0, 0, 0);
+                }, 1500);
+            });
+
+            // Spring expands as striker moves forward
+            animateScale(sys.spring.mesh, 1.0, 'x', 180);
+        });
     });
 }
 
 function resetSystem() {
     if (currentSystem === 'shotgun') {
-        // Reset shotgun
+        // Reset shotgun - all parts return to rest
         const sys = SYSTEMS.shotgun;
         if (sys && sys.hammer) {
             sys.hammer.mesh.rotation.z = 0;
             sys.hammer.state = 'at_rest';
         }
+        if (sys && sys.sear) {
+            sys.sear.mesh.rotation.z = 0;
+            sys.sear.state = 'disengaged';
+        }
+        if (sys && sys.trigger) {
+            sys.trigger.mesh.rotation.z = 0;
+        }
+        if (sys && sys.spring) {
+            sys.spring.mesh.scale.y = 1.0;
+        }
     } else if (currentSystem === 'bolt') {
-        // Reset bolt striker to rest position
+        // Reset bolt - all parts return to rest
         const sys = SYSTEMS.straightPull;
         if (sys && sys.hammer) {
             sys.hammer.mesh.position.x = 0.25;
             sys.hammer.state = 'at_rest';
+        }
+        if (sys && sys.sear) {
+            sys.sear.mesh.rotation.z = 0;
+            sys.sear.state = 'disengaged';
+        }
+        if (sys && sys.trigger) {
+            sys.trigger.mesh.rotation.z = 0;
+        }
+        if (sys && sys.spring) {
+            sys.spring.mesh.scale.x = 1.0;
         }
     }
 
@@ -900,6 +960,27 @@ function animatePosition(mesh, targetPos, axis, duration, callback) {
         const eased = easeOutCubic(progress);
 
         mesh.position[axis] = startPos + (targetPos - startPos) * eased;
+
+        if (progress < 1) {
+            requestAnimationFrame(step);
+        } else if (callback) {
+            callback();
+        }
+    }
+
+    step();
+}
+
+function animateScale(mesh, targetScale, axis, duration, callback) {
+    const startScale = mesh.scale[axis];
+    const startTime = Date.now();
+
+    function step() {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = easeOutCubic(progress);
+
+        mesh.scale[axis] = startScale + (targetScale - startScale) * eased;
 
         if (progress < 1) {
             requestAnimationFrame(step);
